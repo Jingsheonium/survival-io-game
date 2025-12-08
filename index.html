@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Survival 2D</title>
+    <link rel="stylesheet" href="./src/style.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="gameCanvas"></canvas>
+      
+      <!-- HUD -->
+      <div id="hud">
+        <div class="stat-bar">
+          <div class="bar-label">Health</div>
+          <div class="bar-container">
+            <div class="bar-fill health" id="healthBar" style="width: 100%;"></div>
+          </div>
+        </div>
+        <div class="controls-hint">
+          WASD to Move • E for Inventory • L-Click Mine • R-Click Build
+        </div>
+      </div>
+
+      <!-- Inventory UI -->
+      <div id="inventoryOverlay" class="hidden">
+        <div class="inventory-container">
+          <h2>Inventory</h2>
+          <div class="inventory-grid" id="inventoryGrid">
+            <!-- Items will be injected here -->
+            <div class="inventory-slot empty"></div>
+            <div class="inventory-slot empty"></div>
+            <div class="inventory-slot empty"></div>
+            <div class="inventory-slot empty"></div>
+            <div class="inventory-slot empty"></div>
+            <div class="inventory-slot empty"></div>
+            <div class="inventory-slot empty"></div>
+            <div class="inventory-slot empty"></div>
+          </div>
+          <div class="crafting-section">
+            <h3>Crafting</h3>
+            <div class="crafting-list" id="craftingList">
+              <button class="craft-btn" data-item="wall">Wall (2 Wood)</button>
+              <button class="craft-btn" data-item="floor">Floor (1 Wood)</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Online Status -->
+      <div id="onlineStatus" class="online-badge">
+        <span class="status-dot"></span> Online (Solo)
+      </div>
+    </div>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
