@@ -221,9 +221,9 @@
             swingOffset: 0,        // Current swing offset (0 to PI)
             isSwinging: false,     // Currently attacking?
             swingTime: 0,          // Time left in swing
-            swingDuration: 0.3,    // Fast swing
+            swingDuration: 0.6,    // Total cycle (Fast swing + Slow cooldown)
             reach: 55,             // Distance from player center
-            damage: 0.8            // High damage hit
+            damage: 0.8            // Damage per tick
         };
 
         // WORLD - Generate tiles
@@ -448,55 +448,45 @@
                 camera.x += (camera.targetX - camera.x) * 0.025;  // Very slow follow
                 camera.y += (camera.targetY - camera.y) * 0.025;
 
-                // Camera shake when swinging
-                if (axe.isSwinging) {
-                    camera.x += (Math.random() - 0.5) * 2;
-                    camera.y += (Math.random() - 0.5) * 2;
-                }
-
                 // === UPDATE AXE ===
                 // Trigger swing
                 if (mouseDown) {
                     swingAxe();
                 }
 
-                // Update Axe Animation
+                // === SIMPLIFIED AXE LOGIC ===
+                // 1. Always look at mouse
+                const worldMouseX = mouseX + camera.x;
+                const worldMouseY = mouseY + camera.y;
+                axe.baseAngle = Math.atan2(worldMouseY - player.y, worldMouseX - player.x);
+
+                // 2. Calculate Weapon Offset (relative to look direction)
+                // Default Idle: -90 degrees (Left side)
+                let weaponOffset = -Math.PI / 2;
+
                 if (axe.isSwinging) {
                     axe.swingTime -= dt;
+                    const p = 1 - (axe.swingTime / axe.swingDuration); // 0 to 1
 
-                    // Calculate swing progress (0 to 1)
-                    const progress = 1 - (axe.swingTime / axe.swingDuration);
-
-                    // Swing arc: Start at -90deg (-PI/2), swing to +90deg (+PI/2), then back? 
-                    // Requested: "spin like 180 degrees fastly and then come back"
-
-                    // Let's do a chop: Start back (-45 deg), swing forward fast to (+135 deg)
-                    // Sine wave for smooth swing
-                    const swingArc = Math.PI; // 180 degrees
-
-                    // Simple forward swing 
-                    axe.swingOffset = -Math.PI / 2 + (progress * swingArc);
-
-                    // Update final angle
-                    axe.angle = axe.baseAngle + axe.swingOffset;
-
-                    // Check hits during the middle of the swing (power part)
-                    if (progress > 0.3 && progress < 0.7) {
-                        checkAxeHit();
+                    // Phase 1: FAST SWING (0% -> 20%)
+                    if (p < 0.2) {
+                        const attackP = p / 0.2;
+                        // Sweep from -90 (Left) to +90 (Right)
+                        weaponOffset = -Math.PI / 2 + (Math.PI * attackP);
+                        checkAxeHit(); // Deal damage
+                    }
+                    // Phase 2: SLOW RETURN (20% -> 100%)
+                    else {
+                        const returnP = (p - 0.2) / 0.8;
+                        // Return from +90 (Right) back to -90 (Left)
+                        weaponOffset = Math.PI / 2 - (Math.PI * returnP);
                     }
 
-                    if (axe.swingTime <= 0) {
-                        axe.isSwinging = false;
-                    }
-                } else {
-                    // Determine target angle based on mouse
-                    const worldMouseX = mouseX + camera.x;
-                    const worldMouseY = mouseY + camera.y;
-                    axe.baseAngle = Math.atan2(worldMouseY - player.y, worldMouseX - player.x);
-
-                    // Idle position: slightly to the side
-                    axe.angle = axe.baseAngle + Math.PI / 4;
+                    if (axe.swingTime <= 0) axe.isSwinging = false;
                 }
+
+                // 3. Final Angle
+                axe.angle = axe.baseAngle + weaponOffset;
 
                 // === RENDER ===
                 ctx.fillStyle = '#1a1f3a';
@@ -563,20 +553,18 @@
                 ctx.lineWidth = 3;
                 ctx.stroke();
 
-                // === DRAW SPINNING AXE 🪓 (using asset) ===
+                // === DRAW SPINNING AXE 🪓 ===
                 ctx.save();
                 ctx.translate(playerScreenX, playerScreenY);
-                ctx.rotate(axe.angle);
+                // Rotate to gameplay angle + 45deg correction for diagonal texture
+                ctx.rotate(axe.angle + Math.PI / 4);
 
                 if (axeImg.complete) {
-                    // Draw axe image offset to the side
-                    // Offset X=12 puts it at edge of 48px player (radius 24)
-                    // Offset Y=-24 centers the 48x48 image vertically
-                    ctx.drawImage(axeImg, 12, -24, 48, 48);
+                    // Draw centered
+                    ctx.drawImage(axeImg, 0, -24, 48, 48);
                 } else {
-                    // Fallback
                     ctx.fillStyle = '#8B4513';
-                    ctx.fillRect(0, -3, axe.reach - 10, 6);
+                    ctx.fillRect(0, -5, 45, 10);
                 }
                 ctx.restore();
 
