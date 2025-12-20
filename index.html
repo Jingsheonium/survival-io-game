@@ -139,7 +139,7 @@
 
                 // Block selector sprite (frame overlay)
                 const selectorSprite = new PIXI.Sprite(getTileTexture(frameTexture.baseTexture, 0, 1));
-                selectorSprite.anchor.set(0); // No anchor for world grid alignment
+                selectorSprite.anchor.set(0.5); // Center anchor to match visual tiles
                 selectorSprite.width = TILE_SIZE;
                 selectorSprite.height = TILE_SIZE;
                 overlayContainer.addChild(selectorSprite); // Add to overlay layer
@@ -593,13 +593,13 @@
                         if (!camera.freelook) {
                             const mouseWorldX = mouse.x / camera.zoom + camera.x;
                             const mouseWorldY = mouse.y / camera.zoom + camera.y;
-                            // Use same calculation as block placement
+                            // Snap to world grid for data
                             const hoverWorldX = Math.floor(mouseWorldX / TILE_SIZE);
                             const hoverWorldY = Math.floor(mouseWorldY / TILE_SIZE);
 
-                            // Position selector on world grid
-                            selectorSprite.x = hoverWorldX * TILE_SIZE;
-                            selectorSprite.y = hoverWorldY * TILE_SIZE;
+                            // Position selector on VISUAL grid (offset +0.5)
+                            selectorSprite.x = (hoverWorldX + 0.5) * TILE_SIZE;
+                            selectorSprite.y = (hoverWorldY + 0.5) * TILE_SIZE;
                             selectorSprite.visible = true;
 
                             // Frame 0 = hover, Frame 1 = pressed
@@ -625,8 +625,8 @@
                             gridGraphics.beginFill(0, 0);
                             for (let x = startX; x <= endX; x += TILE_SIZE) {
                                 for (let y = startY; y <= endY; y += TILE_SIZE) {
-                                    // Draw on world grid
-                                    gridGraphics.drawRect(x, y, TILE_SIZE, TILE_SIZE);
+                                    // Draw on VISUAL grid (offset +0.5)
+                                    gridGraphics.drawRect(x + TILE_SIZE / 2, y + TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
                                 }
                             }
                             gridGraphics.endFill();
@@ -642,8 +642,8 @@
                             gridGraphics.beginFill(0, 0);
                             for (let x = startChunkX; x <= endChunkX; x += CHUNK_PIXEL_SIZE) {
                                 for (let y = startChunkY; y <= endChunkY; y += CHUNK_PIXEL_SIZE) {
-                                    // Draw on world grid
-                                    gridGraphics.drawRect(x, y, CHUNK_PIXEL_SIZE, CHUNK_PIXEL_SIZE);
+                                    // Draw on VISUAL grid (offset +0.5)
+                                    gridGraphics.drawRect(x + CHUNK_PIXEL_SIZE / 2, y + CHUNK_PIXEL_SIZE / 2, CHUNK_PIXEL_SIZE, CHUNK_PIXEL_SIZE);
                                 }
                             }
                             gridGraphics.endFill();
