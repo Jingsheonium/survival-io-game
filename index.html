@@ -625,7 +625,8 @@
                             gridGraphics.beginFill(0, 0);
                             for (let x = startX; x <= endX; x += TILE_SIZE) {
                                 for (let y = startY; y <= endY; y += TILE_SIZE) {
-                                    gridGraphics.drawRect(x, y, TILE_SIZE, TILE_SIZE);
+                                    // Center grid to match centered tiles
+                                    gridGraphics.drawRect(x + TILE_SIZE / 2, y + TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
                                 }
                             }
                             gridGraphics.endFill();
@@ -641,7 +642,8 @@
                             gridGraphics.beginFill(0, 0);
                             for (let x = startChunkX; x <= endChunkX; x += CHUNK_PIXEL_SIZE) {
                                 for (let y = startChunkY; y <= endChunkY; y += CHUNK_PIXEL_SIZE) {
-                                    gridGraphics.drawRect(x, y, CHUNK_PIXEL_SIZE, CHUNK_PIXEL_SIZE);
+                                    // Center chunk grid to match centered tiles
+                                    gridGraphics.drawRect(x + CHUNK_PIXEL_SIZE / 2, y + CHUNK_PIXEL_SIZE / 2, CHUNK_PIXEL_SIZE, CHUNK_PIXEL_SIZE);
                                 }
                             }
                             gridGraphics.endFill();
