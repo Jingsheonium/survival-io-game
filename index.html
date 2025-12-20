@@ -139,7 +139,7 @@
 
                 // Block selector sprite (frame overlay)
                 const selectorSprite = new PIXI.Sprite(getTileTexture(frameTexture.baseTexture, 0, 1));
-                selectorSprite.anchor.set(0.5); // Center anchor - with +0.5 offset = perfectly aligned
+                selectorSprite.anchor.set(0); // Top-left anchor to match tiles
                 selectorSprite.width = TILE_SIZE;
                 selectorSprite.height = TILE_SIZE;
                 overlayContainer.addChild(selectorSprite); // Add to overlay layer
@@ -290,15 +290,15 @@
                         for (let tx = 0; tx < CHUNK_SIZE; tx++) {
                             const worldX = cx * CHUNK_SIZE + tx;
                             const worldY = cy * CHUNK_SIZE + ty;
-                            const visualX = (worldX + 0.5) * TILE_SIZE;
-                            const visualY = (worldY + 0.5) * TILE_SIZE;
+                            const visualX = worldX * TILE_SIZE; // No offset - align with grid
+                            const visualY = worldY * TILE_SIZE; // No offset - align with grid
 
                             // Dirt sprite
                             const dirtIdx = getDirtTileIndex(worldX, worldY);
                             const dirtSprite = new PIXI.Sprite(getTileTexture(dirtTexture.baseTexture, dirtIdx));
                             dirtSprite.x = visualX;
                             dirtSprite.y = visualY;
-                            dirtSprite.anchor.set(0.5);
+                            dirtSprite.anchor.set(0); // Top-left anchor to align with grid
                             dirtSprite.width = TILE_SIZE;
                             dirtSprite.height = TILE_SIZE;
                             container.addChild(dirtSprite);
@@ -308,7 +308,7 @@
                             const grassSprite = new PIXI.Sprite(getTileTexture(grassTexture.baseTexture, grassIdx));
                             grassSprite.x = visualX;
                             grassSprite.y = visualY;
-                            grassSprite.anchor.set(0.5);
+                            grassSprite.anchor.set(0); // Top-left anchor to align with grid
                             grassSprite.width = TILE_SIZE;
                             grassSprite.height = TILE_SIZE;
                             container.addChild(grassSprite);
@@ -597,9 +597,9 @@
                             const hoverWorldX = Math.floor(mouseWorldX / TILE_SIZE);
                             const hoverWorldY = Math.floor(mouseWorldY / TILE_SIZE);
 
-                            // Position selector centered in grid cell (matches visual tiles)
-                            selectorSprite.x = (hoverWorldX + 0.5) * TILE_SIZE;
-                            selectorSprite.y = (hoverWorldY + 0.5) * TILE_SIZE;
+                            // Position selector on world grid
+                            selectorSprite.x = hoverWorldX * TILE_SIZE;
+                            selectorSprite.y = hoverWorldY * TILE_SIZE;
                             selectorSprite.visible = true;
 
                             // Frame 0 = hover, Frame 1 = pressed
@@ -620,12 +620,12 @@
                             const startY = Math.floor(camera.y / TILE_SIZE) * TILE_SIZE;
                             const endY = Math.ceil((camera.y + viewHeight) / TILE_SIZE) * TILE_SIZE;
 
-                            // Draw tile grid (RED) - thinner and more transparent
+                            // Draw tile grid (RED)
                             gridGraphics.lineStyle(0.5, 0xff0000, 0.15);
                             gridGraphics.beginFill(0, 0);
                             for (let x = startX; x <= endX; x += TILE_SIZE) {
                                 for (let y = startY; y <= endY; y += TILE_SIZE) {
-                                    // Draw on WORLD grid
+                                    // Draw on world grid
                                     gridGraphics.drawRect(x, y, TILE_SIZE, TILE_SIZE);
                                 }
                             }
@@ -642,7 +642,7 @@
                             gridGraphics.beginFill(0, 0);
                             for (let x = startChunkX; x <= endChunkX; x += CHUNK_PIXEL_SIZE) {
                                 for (let y = startChunkY; y <= endChunkY; y += CHUNK_PIXEL_SIZE) {
-                                    // Draw on WORLD grid
+                                    // Draw on world grid
                                     gridGraphics.drawRect(x, y, CHUNK_PIXEL_SIZE, CHUNK_PIXEL_SIZE);
                                 }
                             }
