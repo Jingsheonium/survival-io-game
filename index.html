@@ -127,6 +127,7 @@
 
                 // Block selector sprite (frame overlay)
                 const selectorSprite = new PIXI.Sprite(getTileTexture(frameTexture.baseTexture, 0, 1));
+                selectorSprite.anchor.set(0); // No anchor - position at top-left
                 selectorSprite.width = TILE_SIZE;
                 selectorSprite.height = TILE_SIZE;
                 worldContainer.addChild(selectorSprite);
@@ -597,7 +598,7 @@
                         // Update grid
                         if (camera.showGrid) {
                             gridGraphics.clear();
-                            gridGraphics.lineStyle(2, 0xff0000, 0.8); // Thicker, more opaque red lines
+                            gridGraphics.lineStyle(2, 0xff0000, 0.8);
 
                             const viewWidth = app.screen.width / camera.zoom;
                             const viewHeight = app.screen.height / camera.zoom;
@@ -606,18 +607,20 @@
                             const startY = Math.floor(camera.y / TILE_SIZE) * TILE_SIZE;
                             const endY = Math.ceil((camera.y + viewHeight) / TILE_SIZE) * TILE_SIZE;
 
-                            // Vertical lines
+                            // Draw vertical lines
                             for (let x = startX; x <= endX; x += TILE_SIZE) {
                                 gridGraphics.moveTo(x, startY);
                                 gridGraphics.lineTo(x, endY);
                             }
 
-                            // Horizontal lines
+                            // Draw horizontal lines
                             for (let y = startY; y <= endY; y += TILE_SIZE) {
                                 gridGraphics.moveTo(startX, y);
                                 gridGraphics.lineTo(endX, y);
                             }
 
+                            // CRITICAL: Actually draw the lines!
+                            gridGraphics.stroke();
                             gridGraphics.visible = true;
                         } else {
                             gridGraphics.visible = false;
