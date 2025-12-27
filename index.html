@@ -291,7 +291,7 @@
                             const worldX = cx * CHUNK_SIZE + tx;
                             const worldY = cy * CHUNK_SIZE + ty;
 
-                            // Dirt sprite - world grid
+                            // Dirt sprite - world grid (perfect)
                             const dirtIdx = getDirtTileIndex(worldX, worldY);
                             const dirtSprite = new PIXI.Sprite(getTileTexture(dirtTexture.baseTexture, dirtIdx));
                             dirtSprite.x = worldX * TILE_SIZE;
@@ -301,11 +301,11 @@
                             dirtSprite.height = TILE_SIZE;
                             container.addChild(dirtSprite);
 
-                            // Grass sprite - world grid (same as dirt)
+                            // Grass sprite - offset +0.5 to fix northwest issue
                             const grassIdx = getGrassTileIndex(worldX, worldY);
                             const grassSprite = new PIXI.Sprite(getTileTexture(grassTexture.baseTexture, grassIdx));
-                            grassSprite.x = worldX * TILE_SIZE;
-                            grassSprite.y = worldY * TILE_SIZE;
+                            grassSprite.x = worldX * TILE_SIZE + (TILE_SIZE * 0.5);
+                            grassSprite.y = worldY * TILE_SIZE + (TILE_SIZE * 0.5);
                             grassSprite.anchor.set(0);
                             grassSprite.width = TILE_SIZE;
                             grassSprite.height = TILE_SIZE;
