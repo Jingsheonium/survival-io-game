@@ -197,7 +197,8 @@
                     const tr = getTile(x + 1, y);
                     const bl = getTile(x, y + 1);
                     const br = getTile(x + 1, y + 1);
-                    const key = `${tl},${tr},${bl},${br}`;
+                    // Invert values: getTile returns 0=grass,1=dirt but GRASS_TILE_MAP expects 0=dirt,1=grass
+                    const key = `${1 - tl},${1 - tr},${1 - bl},${1 - br}`;
                     return GRASS_TILE_MAP[key] !== undefined ? GRASS_TILE_MAP[key] : 6;
                 }
 
@@ -313,14 +314,14 @@
                             grassSprite.height = TILE_SIZE;
                             container.addChild(grassSprite);
 
-                            // Debug: show world grid position for GRASS blocks
-                            if (getTile(worldX, worldY) === 0) { // 0 = grass
+                            // Debug: show world grid position for DIRT blocks (only in grid mode)
+                            if (getTile(worldX, worldY) === 1) { // 1 = dirt
                                 const debugRect = new PIXI.Graphics();
                                 debugRect.beginFill(0x00ff00, 0.3); // Light green shade
                                 debugRect.drawRect(worldX * TILE_SIZE, worldY * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                                 debugRect.endFill();
-                                debugRect.name = 'grassDebug';
-                                container.addChild(debugRect); // Add to tile container for now
+                                debugRect.name = 'dirtDebug';
+                                gridContainer.addChild(debugRect); // Add to grid layer so it toggles with grid
                             }
                         }
                     }
