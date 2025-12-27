@@ -192,13 +192,8 @@
                 };
 
                 function getGrassTileIndex(x, y) {
-                    // Visual tile centered at (x+0.5, y+0.5), corners touch (x,y), (x+1,y), (x,y+1), (x+1,y+1)
-                    const tl = getTile(x, y);
-                    const tr = getTile(x + 1, y);
-                    const bl = getTile(x, y + 1);
-                    const br = getTile(x + 1, y + 1);
-                    const key = `${tl},${tr},${bl},${br}`;
-                    return GRASS_TILE_MAP[key] !== undefined ? GRASS_TILE_MAP[key] : 6;
+                    // TEST: always return tile 1
+                    return 1;
                 }
 
                 // Perlin noise
