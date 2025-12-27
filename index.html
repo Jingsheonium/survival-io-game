@@ -75,9 +75,6 @@
                 app.renderer.view.style.imageRendering = 'pixelated';
                 app.renderer.view.style.imageRendering = 'crisp-edges';
 
-                // Disable antialiasing for sharp pixels
-                app.renderer.plugins.interaction.resolution = 1;
-
                 // Limit FPS to 60 for stable performance
                 app.ticker.maxFPS = 60;
                 app.ticker.minFPS = 60;
