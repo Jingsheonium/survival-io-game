@@ -424,6 +424,26 @@
                         crosshairGraphics.moveTo(centerX, centerY - size);
                         crosshairGraphics.lineTo(centerX, centerY + size);
                         app.stage.addChild(crosshairGraphics);
+
+                        // Block highlight (world space - shows which block is hovered)
+                        const worldMouseX = (mouse.x - world.x) / camera.zoom;
+                        const worldMouseY = (mouse.y - world.y) / camera.zoom;
+                        const tileX = Math.floor(worldMouseX / TILE_SIZE);
+                        const tileY = Math.floor(worldMouseY / TILE_SIZE);
+
+                        const highlightGraphics = new PIXI.Graphics();
+                        // Use different sprite based on mouse state: 0 = not pressed, 1 = pressed
+                        const highlightAlpha = (mouse.left || mouse.right) ? 0.5 : 0.3;
+                        const highlightColor = (mouse.left || mouse.right) ? 0xFFFFFF : 0xFFFF00;
+
+                        highlightGraphics.lineStyle(2, highlightColor, highlightAlpha);
+                        highlightGraphics.drawRect(
+                            tileX * TILE_SIZE,
+                            tileY * TILE_SIZE,
+                            TILE_SIZE,
+                            TILE_SIZE
+                        );
+                        world.addChild(highlightGraphics);
                     });
 
                     // Render function - chunk-based with caching

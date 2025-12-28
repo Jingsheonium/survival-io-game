@@ -81,7 +81,7 @@
    * Instruction: If (TL==F && TR==F && BL==F && BR==F) use Image ID: [6] 
 
 ✅ 1. add alt mode and fix scrolling in that too. like dragging stuff around.
-2. add highlight for blocks that are being hovered over. and when mosue pressed go to image 1 when not image 0. for spriotesheet
+✅ 2. add highlight for blocks that are being hovered over. and when mosue pressed go to image 1 when not image 0. for spriotesheet
 3. add a crossbar in the center of the screen4
 4. use my special cursor :D.
 5. it wen aw snap after a while.
@@ -90,5 +90,5 @@
 8. grid have rendering issues. unstable.
 9. blocks are blurry
 10. unstable, half blocks apeear
-11. optimising
+11. optimising, render can be cached but world grid and accual data can not like block palce ment and obliteration. and block loading, porbably the reason for half blocks. 
 12. to be continued
