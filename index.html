@@ -428,8 +428,19 @@
                         }
                     }
 
+                    console.log(`Rendering chunk (${cx},${cy}) with ${CHUNK_SIZE}x${CHUNK_SIZE} tiles`);
+
+                    // Debug: Add colored background to see if chunk container is visible
+                    const debugBg = new PIXI.Graphics();
+                    debugBg.beginFill(0x333333, 0.3);
+                    debugBg.drawRect(cx * CHUNK_SIZE * TILE_SIZE, cy * CHUNK_SIZE * TILE_SIZE,
+                        CHUNK_SIZE * TILE_SIZE, CHUNK_SIZE * TILE_SIZE);
+                    debugBg.endFill();
+                    container.addChild(debugBg);
+
                     chunkContainers.set(key, container);
                     world.addChild(container);
+                    console.log(`Chunk (${cx},${cy}) added to world. Total chunks: ${chunkContainers.size}`);
                 }
 
                 // Render overlays (grid, highlights, etc) - called after chunk rendering
