@@ -157,15 +157,12 @@
         }
 
 
-        // Load textures and wait for them
-        const loader = PIXI.Loader.shared;
-        loader.add('dirt', 'Assets/Image/Tile/dirt.png');
-        loader.add('grass', 'Assets/Image/Tile/grass.png');
 
-        loader.load((loader, resources) => {
-            const dirtTex = resources.dirt.texture;
-            const grassTex = resources.grass.texture;
-
+        // Load textures using modern Assets API (v7+)
+        Promise.all([
+            PIXI.Assets.load('Assets/Image/Tile/dirt.png'),
+            PIXI.Assets.load('Assets/Image/Tile/grass.png')
+        ]).then(([dirtTex, grassTex]) => {
             document.getElementById('info').textContent = 'Ready! Left=Grass, Right=Dirt';
 
             // Game loop
