@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Survival Game - Clean</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: monospace;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="info">Loading...</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.2.4/pixi.min.js"></script>
+    <script>
+        // Settings
+        const TILE_SIZE = 16;
+        const CHUNK_SIZE = 16;
+
+        // PixiJS App
+        const app = new PIXI.Application({
+            width: window.innerWidth,
+            height: window.innerHeight,
+            backgroundColor: 0x1a1a1a,
+            antialias: false
+        });
+        document.body.appendChild(app.view);
+
+        // Pixel-perfect
+        PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST;
+        PIXI.settings.ROUND_PIXELS = true;
+        app.ticker.maxFPS = 64;
+
+        // Load textures
+        const grassTex = PIXI.Texture.from('Assets/Image/Tile/grass.png');
+        const dirtTex = PIXI.Texture.from('Assets/Image/Tile/dirt.png');
+
+        // World container
+        const world = new PIXI.Container();
+        app.stage.addChild(world);
+
+        // World data
+        const tiles = new Map(); // "x,y" -> 0=dirt, 1=grass
+
+        function getTile(x, y) {
+            const key = `${x},${y}`;
+            if (!tiles.has(key)) {
+                // Generate with noise
+                const noise = Math.sin(x * 0.05) * Math.cos(y * 0.05);
+                tiles.set(key, noise > 0.1 ? 0 : 1);
+            }
+            return tiles.get(key);
+        }
+
+        function setTile(x, y, value) {
+            tiles.set(`${x},${y}`, value);
+        }
+
+        // Get dirt variant (4x4 grid)
+        function getDirtIdx(x, y) {
+            const seed = x * 374761393 + y * 668265263;
+            let value = Math.sin(seed) * 43758.5453;
+            return Math.floor((value - Math.floor(value)) * 16);
+        }
+
+        function getTileTexture(baseTex, idx) {
+            const col = idx % 4;
+            const row = Math.floor(idx / 4);
+            return new PIXI.Texture(baseTex, new PIXI.Rectangle(col * 16, row * 16, 16, 16));
+        }
+
+        // Camera
+        const camera = { x: 0, y: 0, zoom: 3 };
+
+        // Mouse
+        const mouse = { x: 0, y: 0, left: false, right: false };
+
+        app.view.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        app.view.addEventListener('mousedown', (e) => {
+            if (e.button === 0) mouse.left = true;
+            if (e.button === 2) mouse.right = true;
+            e.preventDefault();
+        });
+
+        app.view.addEventListener('mouseup', (e) => {
+            if (e.button === 0) mouse.left = false;
+            if (e.button === 2) mouse.right = false;
+        });
+
+        app.view.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // Render
+        function render() {
+            world.removeChildren();
+
+            const startX = Math.floor(camera.x / TILE_SIZE) - 20;
+            const endX = Math.ceil((camera.x + app.screen.width / camera.zoom) / TILE_SIZE) + 20;
+            const startY = Math.floor(camera.y / TILE_SIZE) - 20;
+            const endY = Math.ceil((camera.y + app.screen.height / camera.zoom) / TILE_SIZE) + 20;
+
+            for (let y = startY; y < endY; y++) {
+                for (let x = startX; x < endX; x++) {
+                    const tileValue = getTile(x, y);
+                    const idx = getDirtIdx(x, y);
+                    const tex = getTileTexture(dirtTex.baseTexture, idx);
+
+                    const sprite = new PIXI.Sprite(tex);
+                    sprite.x = x * TILE_SIZE;
+                    sprite.y = y * TILE_SIZE;
+                    sprite.width = TILE_SIZE;
+                    sprite.height = TILE_SIZE;
+                    world.addChild(sprite);
+                }
+            }
+
+            // Transform
+            world.scale.set(camera.zoom);
+            world.x = -camera.x * camera.zoom + app.screen.width / 2;
+            world.y = -camera.y * camera.zoom + app.screen.height / 2;
+        }
+
+        // Game loop
+        app.ticker.add(() => {
+            // Handle input
+            if (mouse.left || mouse.right) {
+                const worldX = Math.floor((mouse.x - world.x) / camera.zoom / TILE_SIZE);
+                const worldY = Math.floor((mouse.y - world.y) / camera.zoom / TILE_SIZE);
+                setTile(worldX, worldY, mouse.left ? 1 : 0);
+            }
+
+            render();
+        });
+
+        document.getElementById('info').textContent = 'Ready! Left=Grass, Right=Dirt';
+    </script>
+</body>
+
+</html>
