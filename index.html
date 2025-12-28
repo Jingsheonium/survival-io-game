@@ -28,7 +28,7 @@
 
 <body>
     <div id="info">Loading...</div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.2.4/pixi.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/8.14.3/pixi.min.js"></script>
     <script>
         // Settings
         const TILE_SIZE = 16;
@@ -43,9 +43,8 @@
         });
         document.body.appendChild(app.view);
 
-        // Pixel-perfect
-        PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST;
-        PIXI.settings.ROUND_PIXELS = true;
+        // Pixel-perfect (v8 compatible)
+        PIXI.BaseTexture.defaultOptions.scaleMode = PIXI.SCALE_MODES.NEAREST;
         app.ticker.maxFPS = 64;
 
         // Load textures
