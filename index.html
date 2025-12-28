@@ -184,7 +184,8 @@
 
             app.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-            // Zoom
+            // Zoom with LOD threshold tracking
+            let wasInLOD = camera.zoom < 1.0;
             app.canvas.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 const zoomSpeed = 0.1;
@@ -192,6 +193,18 @@
                     camera.zoom = Math.min(camera.zoom + zoomSpeed, 10);
                 } else {
                     camera.zoom = Math.max(camera.zoom - zoomSpeed, 0.1);
+                }
+
+                // Check if we crossed LOD threshold
+                const nowInLOD = camera.zoom < 1.0;
+                if (wasInLOD !== nowInLOD) {
+                    // Clear chunk cache to force re-render with new detail level
+                    for (const [key, container] of chunkContainers.entries()) {
+                        world.removeChild(container);
+                        container.destroy();
+                    }
+                    chunkContainers.clear();
+                    wasInLOD = nowInLOD;
                 }
             });
 
