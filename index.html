@@ -155,12 +155,29 @@
             return GRASS_MAP[key] !== undefined ? GRASS_MAP[key] : 6;
         }
 
+        // Create placeholder texture when image files are missing
+        function createPlaceholderTexture(color) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64; // 4x4 grid of 16x16 tiles
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+            ctx.fillRect(0, 0, 64, 64);
+            return PIXI.Texture.from(canvas);
+        }
 
 
-        // Load textures using modern Assets API (v7+)
+
+        // Load textures using modern Assets API (v8+)
         Promise.all([
-            PIXI.Assets.load('Assets/Image/Tile/dirt.png'),
-            PIXI.Assets.load('Assets/Image/Tile/grass.png')
+            PIXI.Assets.load('Assets/Image/Tile/dirt.png').catch(() => {
+                console.warn('dirt.png not found, using placeholder');
+                return createPlaceholderTexture(0x8B4513); // Brown
+            }),
+            PIXI.Assets.load('Assets/Image/Tile/grass.png').catch(() => {
+                console.warn('grass.png not found, using placeholder');
+                return createPlaceholderTexture(0x228B22); // Green
+            })
         ]).then(([dirtTex, grassTex]) => {
             document.getElementById('info').textContent = 'Ready! Left=Grass, Right=Dirt';
 
