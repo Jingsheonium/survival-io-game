@@ -191,7 +191,7 @@
                 if (e.deltaY < 0) {
                     camera.zoom = Math.min(camera.zoom + zoomSpeed, 10);
                 } else {
-                    camera.zoom = Math.max(camera.zoom - zoomSpeed, 0.5);
+                    camera.zoom = Math.max(camera.zoom - zoomSpeed, 0.1);
                 }
             });
 
@@ -275,6 +275,39 @@
                     return createPlaceholderTexture(0x228B22); // Green
                 })
             ]).then(([dirtTex, grassTex]) => {
+                // Calculate average colors for LOD rendering
+                function getAverageColor(texture) {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = texture.width;
+                    canvas.height = texture.height;
+
+                    // Draw texture to canvas
+                    const img = texture.source.resource;
+                    ctx.drawImage(img, 0, 0);
+
+                    // Get pixel data
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imageData.data;
+
+                    let r = 0, g = 0, b = 0, count = 0;
+                    for (let i = 0; i < data.length; i += 4) {
+                        r += data[i];
+                        g += data[i + 1];
+                        b += data[i + 2];
+                        count++;
+                    }
+
+                    r = Math.floor(r / count);
+                    g = Math.floor(g / count);
+                    b = Math.floor(b / count);
+
+                    return (r << 16) | (g << 8) | b; // Return as hex color
+                }
+
+                const avgDirtColor = getAverageColor(dirtTex);
+                const avgGrassColor = getAverageColor(grassTex);
+
                 document.getElementById('info').textContent = 'Generating world...';
 
                 // Pre-generate chunks around spawn to prevent lag spikes
@@ -415,6 +448,28 @@
                     const key = `${cx},${cy}`;
                     const chunk = getChunk(cx, cy);
                     const container = new PIXI.Container();
+
+                    // LOD: If zoomed out, render as solid color rectangles
+                    if (camera.zoom < 1.0) {
+                        const graphics = new PIXI.Graphics();
+                        for (let ty = 0; ty < CHUNK_SIZE; ty++) {
+                            for (let tx = 0; tx < CHUNK_SIZE; tx++) {
+                                const worldX = cx * CHUNK_SIZE + tx;
+                                const worldY = cy * CHUNK_SIZE + ty;
+                                const tileType = chunk[ty][tx];
+
+                                // Use average color based on tile type
+                                const color = tileType === 1 ? avgGrassColor : avgDirtColor;
+                                graphics.beginFill(color);
+                                graphics.drawRect(worldX * TILE_SIZE, worldY * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                                graphics.endFill();
+                            }
+                        }
+                        container.addChild(graphics);
+                        chunkContainers.set(key, container);
+                        world.addChild(container);
+                        return;
+                    }
 
                     // Render all tiles in this chunk
                     for (let ty = 0; ty < CHUNK_SIZE; ty++) {
