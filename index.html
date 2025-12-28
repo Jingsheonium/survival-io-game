@@ -305,15 +305,6 @@
                             dirtSprite.width = TILE_SIZE;
                             dirtSprite.height = TILE_SIZE;
                             container.addChild(dirtSprite);
-
-                            // Show green shade for grass tiles (only in grid mode)
-                            if (tileValue === 1) {
-                                const greenShade = new PIXI.Graphics();
-                                greenShade.beginFill(0x00ff00, 0.3); // Green with transparency
-                                greenShade.drawRect(worldX * TILE_SIZE, worldY * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                                greenShade.endFill();
-                                gridContainer.addChild(greenShade); // Add to grid layer so it toggles with 'G'
-                            }
                         }
                     }
 
@@ -662,6 +653,19 @@
                                 for (let y = startChunkY; y <= endChunkY; y += CHUNK_PIXEL_SIZE) {
                                     // Draw on world grid
                                     gridGraphics.drawRect(x, y, CHUNK_PIXEL_SIZE, CHUNK_PIXEL_SIZE);
+                                }
+                            }
+                            gridGraphics.endFill();
+
+                            // Draw green shades for grass tiles (value=1)
+                            gridGraphics.beginFill(0x00ff00, 0.3); // Green with transparency
+                            for (let x = startX; x <= endX; x += TILE_SIZE) {
+                                for (let y = startY; y <= endY; y += TILE_SIZE) {
+                                    const worldX = Math.floor(x / TILE_SIZE);
+                                    const worldY = Math.floor(y / TILE_SIZE);
+                                    if (getTile(worldX, worldY) === 1) { // 1 = grass
+                                        gridGraphics.drawRect(x, y, TILE_SIZE, TILE_SIZE);
+                                    }
                                 }
                             }
                             gridGraphics.endFill();
