@@ -184,8 +184,7 @@
 
             app.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-            // Zoom with LOD threshold tracking
-            let wasInLOD = camera.zoom < 1.0;
+            // Zoom
             app.canvas.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 const zoomSpeed = 0.1;
@@ -193,18 +192,6 @@
                     camera.zoom = Math.min(camera.zoom + zoomSpeed, 10);
                 } else {
                     camera.zoom = Math.max(camera.zoom - zoomSpeed, 0.1);
-                }
-
-                // Check if we crossed LOD threshold
-                const nowInLOD = camera.zoom < 1.0;
-                if (wasInLOD !== nowInLOD) {
-                    // Clear chunk cache to force re-render with new detail level
-                    for (const [key, container] of chunkContainers.entries()) {
-                        world.removeChild(container);
-                        container.destroy();
-                    }
-                    chunkContainers.clear();
-                    wasInLOD = nowInLOD;
                 }
             });
 
@@ -417,6 +404,13 @@
 
                 // Render function - chunk-based to prevent crashes
                 function render() {
+                    // Clear all existing chunk containers every frame
+                    for (const [key, container] of chunkContainers.entries()) {
+                        world.removeChild(container);
+                        container.destroy();
+                    }
+                    chunkContainers.clear();
+
                     // Calculate player chunk position (round to center player in chunk)
                     const playerChunkX = Math.round(player.x / TILE_SIZE / CHUNK_SIZE);
                     const playerChunkY = Math.round(player.y / TILE_SIZE / CHUNK_SIZE);
@@ -424,31 +418,13 @@
                     // Dynamic render distance based on zoom (more zoom = less chunks needed)
                     const renderDistance = Math.ceil(5 / camera.zoom);
 
-                    // Determine which chunks to render (within renderDistance)
-                    const chunksToRender = new Set();
+                    // Render all visible chunks
+                    let chunksRendered = 0;
                     for (let cy = playerChunkY - renderDistance; cy <= playerChunkY + renderDistance; cy++) {
                         for (let cx = playerChunkX - renderDistance; cx <= playerChunkX + renderDistance; cx++) {
-                            chunksToRender.add(`${cx},${cy}`);
-                        }
-                    }
-
-                    // Remove chunks that are out of range
-                    for (const [key, container] of chunkContainers.entries()) {
-                        if (!chunksToRender.has(key)) {
-                            world.removeChild(container);
-                            container.destroy({ children: true });
-                            chunkContainers.delete(key);
-                        }
-                    }
-
-                    // Render/update chunks within range
-                    chunksRendered = 0;
-                    for (const key of chunksToRender) {
-                        if (!chunkContainers.has(key)) {
-                            const [cx, cy] = key.split(',').map(Number);
                             renderChunk(cx, cy);
+                            chunksRendered++;
                         }
-                        chunksRendered++;
                     }
 
                     // Update stats with chunk count
