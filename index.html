@@ -158,8 +158,8 @@
             // Camera
             const camera = { x: 0, y: 0, zoom: 3.0, freelook: false };
 
-            // Player
-            const player = { x: 0, y: 0, width: 16, height: 16, speed: 200 };
+            // Player (start in center of world, not at edge)
+            const player = { x: 128, y: 128, width: 16, height: 16, speed: 200 };
 
             // Mouse
             const mouse = { x: 0, y: 0, left: false, right: false };
@@ -328,9 +328,8 @@
                         camera.y += moveY * player.speed * dt;
                     } else {
                         // Normal mode: camera follows player (player centered on screen)
-                        // Camera x,y represents the world coordinates at the top-left of the screen
-                        camera.x = player.x + player.width / 2 - (app.screen.width / 2) / camera.zoom;
-                        camera.y = player.y + player.height / 2 - (app.screen.height / 2) / camera.zoom;
+                        camera.x = player.x + player.width / 2;
+                        camera.y = player.y + player.height / 2;
                     }
 
                     // Update stats (simplified: FPS and location only)
@@ -347,10 +346,10 @@
                     render();
                     renderOverlays();
 
-                    // Transform world (camera system)
+                    // Transform world (camera system - center camera position on screen)
                     world.scale.set(camera.zoom);
-                    world.x = -camera.x * camera.zoom;
-                    world.y = -camera.y * camera.zoom;
+                    world.x = -camera.x * camera.zoom + app.screen.width / 2;
+                    world.y = -camera.y * camera.zoom + app.screen.height / 2;
 
                     // Clear previous UI overlays (keep world container)
                     while (app.stage.children.length > 1) {
@@ -502,6 +501,7 @@
                             overlayGraphics.moveTo(chunkStartX * TILE_SIZE, y * TILE_SIZE);
                             overlayGraphics.lineTo(chunkEndX * TILE_SIZE, y * TILE_SIZE);
                         }
+                        overlayGraphics.stroke(); // Make lines visible
 
                         // 3. Red tile grid
                         overlayGraphics.lineStyle(1, 0xff0000, 0.3);
@@ -513,6 +513,7 @@
                             overlayGraphics.moveTo(startX * TILE_SIZE, y * TILE_SIZE);
                             overlayGraphics.lineTo(endX * TILE_SIZE, y * TILE_SIZE);
                         }
+                        overlayGraphics.stroke(); // Make lines visible
 
                         // 4. White visual grid (offset by 0.5 from world grid)
                         overlayGraphics.lineStyle(1, 0xffffff, 0.4); // Thicker and more visible
@@ -526,6 +527,7 @@
                             overlayGraphics.moveTo(startX * TILE_SIZE, visualY);
                             overlayGraphics.lineTo(endX * TILE_SIZE, visualY);
                         }
+                        overlayGraphics.stroke(); // Make lines visible
                     }
 
                     world.addChild(overlayGraphics);
