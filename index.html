@@ -424,14 +424,21 @@
                         app.stage.addChild(crosshairGraphics);
                     });
 
-                    // Render function - chunk-based to prevent crashes
+                    // Render function - chunk-based with caching
+                    let lastLODState = camera.zoom < config.lodThreshold;
+
                     function render() {
-                        // Clear all existing chunk containers every frame
-                        for (const [key, container] of chunkContainers.entries()) {
-                            world.removeChild(container);
-                            container.destroy();
+                        // Check if we crossed LOD threshold
+                        const currentLODState = camera.zoom < config.lodThreshold;
+                        if (lastLODState !== currentLODState) {
+                            // Clear all chunks when crossing LOD threshold
+                            for (const [key, container] of chunkContainers.entries()) {
+                                world.removeChild(container);
+                                container.destroy();
+                            }
+                            chunkContainers.clear();
+                            lastLODState = currentLODState;
                         }
-                        chunkContainers.clear();
 
                         // Calculate player chunk position (round to center player in chunk)
                         const playerChunkX = Math.round(player.x / TILE_SIZE / CHUNK_SIZE);
@@ -440,20 +447,37 @@
                         // Dynamic render distance based on zoom (more zoom = less chunks needed)
                         const renderDistance = Math.ceil(5 / camera.zoom);
 
-                        // Render all visible chunks
-                        let chunksRendered = 0;
+                        // Determine which chunks should be visible
+                        const chunksToRender = new Set();
                         for (let cy = playerChunkY - renderDistance; cy <= playerChunkY + renderDistance; cy++) {
                             for (let cx = playerChunkX - renderDistance; cx <= playerChunkX + renderDistance; cx++) {
-                                renderChunk(cx, cy);
-                                chunksRendered++;
+                                chunksToRender.add(`${cx},${cy}`);
                             }
+                        }
+
+                        // Remove chunks that are out of range
+                        for (const [key, container] of chunkContainers.entries()) {
+                            if (!chunksToRender.has(key)) {
+                                world.removeChild(container);
+                                container.destroy();
+                                chunkContainers.delete(key);
+                            }
+                        }
+
+                        // Render new chunks (only if not already rendered)
+                        let chunksRendered = 0;
+                        for (const key of chunksToRender) {
+                            if (!chunkContainers.has(key)) {
+                                const [cx, cy] = key.split(',').map(Number);
+                                renderChunk(cx, cy);
+                            }
+                            chunksRendered++;
                         }
 
                         // Update stats with chunk count
                         const fps = Math.round(app.ticker.FPS);
                         document.getElementById('info').textContent = `FPS: ${fps} | Location: ${Math.floor(player.x)}, ${Math.floor(player.y)} | Zoom: ${camera.zoom.toFixed(2)}x | Chunks: ${chunksRendered}`;
                     }
-
                     // Render a single chunk
                     function renderChunk(cx, cy) {
                         const key = `${cx},${cy}`;
@@ -526,6 +550,16 @@
                     let overlayGraphics = null;
 
                     function renderOverlays() {
+                        // Skip overlay rendering entirely if grid is disabled (massive performance boost)
+                        if (!showGrid) {
+                            if (overlayGraphics) {
+                                world.removeChild(overlayGraphics);
+                                overlayGraphics.destroy();
+                                overlayGraphics = null;
+                            }
+                            return;
+                        }
+
                         // Clear previous overlays
                         if (overlayGraphics) {
                             world.removeChild(overlayGraphics);
