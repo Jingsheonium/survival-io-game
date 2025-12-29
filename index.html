@@ -474,18 +474,15 @@
                             moveY *= 0.707;
                         }
 
-                        // Movement logic - different for freelook vs normal
-                        if (isAltPressed) {
-                            // Freelook: WASD moves camera only, player stays in place
-                            camera.x += moveX * player.speed * dt;
-                            camera.y += moveY * player.speed * dt;
-                        } else {
+                        // Movement logic - WASD only works in normal mode
+                        if (!isAltPressed) {
                             // Normal mode: WASD moves player, camera follows
                             player.x += moveX * player.speed * dt;
                             player.y += moveY * player.speed * dt;
                             camera.x = player.x + player.width / 2;
                             camera.y = player.y + player.height / 2;
                         }
+                        // In freelook mode, camera is moved by mouse drag only (no WASD)
 
                         // Update stats (simplified: FPS and location only)
                         const fps = Math.round(app.ticker.FPS);

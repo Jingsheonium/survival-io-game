@@ -89,7 +89,7 @@
 6. later unlaoded chunks will be fog and would be loaded when player gets close to it. unlaoded ones arew kept in worldfil, just not rendered.
 7. enchance block placement/obliteration. it isnt connected now and iosnt smooth. it should be reallu smooth like last timne when we smoothened it it connects the 2 points that are loaded if it detects a part not loaded. so it should not be separated like more conneted and firm. same for destroying. 
 8. grid have rendering issues. unstable.
-9. blocks are blurry
+9. blocks are blurry, which is BAD >:
 10. unstable, half blocks apeear
 11. optimising, render can be cached but world grid and accual data can not like block palce ment and obliteration. and block loading, porbably the reason for half blocks. 
 12. the image for grass.png isnt on the white line
