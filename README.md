@@ -81,6 +81,7 @@
    * Instruction: If (TL==F && TR==F && BL==F && BR==F) use Image ID: [6] 
 
  1. add alt mode and fix scrolling in that too. like dragging stuff around.
+ 1extra: lets fix the tiles. the tiles for grass should load in white grid, wait WHERE IS THE WHITE VISUAL GRID, ADD THE THIN WHITE GRID BACK. ok yeah thats it for 1extra.
  2. add highlight for blocks that are being hovered over. and when mosue pressed go to image 1 when not image 0. for spriotesheet
 3. add a crossbar in the center of the screen4
 4. use my special cursor :D.

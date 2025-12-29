@@ -34,13 +34,13 @@
             position: absolute;
             top: 10px;
             right: 10px;
-            color: #00ff00;
+            color: #ffffff;
             font-family: 'Minecraft', monospace;
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
-            text-shadow: 0 0 10px #00ff00;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
             opacity: 0;
-            transition: opacity 0.3s;
+            transition: opacity 0.2s;
             pointer-events: none;
         }
 
@@ -247,21 +247,32 @@
                 const keys = {};
                 let showGrid = false;
 
-                // Activity indicator flash function
-                function flashActivity(text) {
+                // Activity indicator - track currently pressed keys
+                let pressedKeys = new Set();
+                let fadeTimeout = null;
+
+                function updateActivity() {
                     const activity = document.getElementById('activity');
-                    activity.textContent = text;
-                    activity.classList.add('flash');
-                    setTimeout(() => {
+                    if (pressedKeys.size === 0) {
+                        // Fade out when no keys pressed
                         activity.classList.remove('flash');
-                    }, 1000); // Fade out after 1 second
+                    } else {
+                        // Show all pressed keys with + between them
+                        const keyList = Array.from(pressedKeys).join(' + ');
+                        activity.textContent = keyList;
+                        activity.classList.add('flash');
+                    }
                 }
 
                 window.addEventListener('keydown', (e) => {
                     keys[e.key.toLowerCase()] = true;
 
-                    // Flash key press
-                    flashActivity(`Key: ${e.key} ${e.altKey ? '+ ALT' : ''} ${e.shiftKey ? '+ SHIFT' : ''} ${e.ctrlKey ? '+ CTRL' : ''}`);
+                    // Add key to pressed set
+                    let keyName = e.key;
+                    if (keyName === ' ') keyName = 'Space';
+                    if (keyName.length === 1) keyName = keyName.toUpperCase();
+                    pressedKeys.add(keyName);
+                    updateActivity();
 
                     if (e.key.toLowerCase() === 'g') {
                         showGrid = !showGrid;
@@ -271,14 +282,20 @@
                     if (e.altKey && !camera.freelook) {
                         camera.freelook = true;
                         console.log('FREELOOK ENABLED - camera.freelook is now:', camera.freelook);
-                        flashActivity('FREELOOK MODE ENABLED');
-                        document.getElementById('info').textContent = 'FREELOOK MODE - Release Alt to exit';
                         e.preventDefault();
                     }
                 });
 
                 window.addEventListener('keyup', (e) => {
                     keys[e.key.toLowerCase()] = false;
+
+                    // Remove key from pressed set
+                    let keyName = e.key;
+                    if (keyName === ' ') keyName = 'Space';
+                    if (keyName.length === 1) keyName = keyName.toUpperCase();
+                    pressedKeys.delete(keyName);
+                    updateActivity();
+
                     console.log('Key released:', e.key, 'Alt:', e.altKey, 'Freelook:', camera.freelook);
                     // Exit freelook when Alt is released
                     if (!e.altKey && camera.freelook) {
@@ -396,8 +413,7 @@
                         }
                     }
 
-                    document.getElementById('info').textContent = 'Ready! Press G for grid, Alt for freelook';
-
+                    document.getElementById('info').textContent = 'World generated! Press G for grid';
 
                     let lastTime = performance.now();
 
