@@ -2,7 +2,7 @@
   "playerSpeed": 200,
   "defaultZoom": 2,
   "minZoom": 0.25,
-  "maxZoom": 10,
+  "maxZoom": 50,
   "chunkSize": 16,
   "renderDistance": 20,
   "lodThreshold": 0.8,

@@ -87,7 +87,7 @@
 
 
             // Chunk-based world data
-            const RENDER_DISTANCE = 5; // chunks
+            // RENDER_DISTANCE now comes from config.renderDistance
             const chunks = new Map(); // "cx,cy" -> chunk data
             const chunkContainers = new Map(); // "cx,cy" -> PIXI.Container
             let chunksRendered = 0;
@@ -311,9 +311,10 @@
                             app.canvas.style.cursor = 'grab';
                             document.getElementById('info').textContent = 'FREELOOK MODE - Drag to pan, Scroll to zoom, Alt to exit';
                         } else {
-                            // Exiting freelook - snap camera back to player
+                            // Exiting freelook - snap camera back to player and reset zoom
                             camera.x = player.x + player.width / 2;
                             camera.y = player.y + player.height / 2;
+                            camera.zoom = config.defaultZoom; // Reset to default zoom (2.0)
                             app.canvas.style.cursor = 'crosshair';
                         }
                         e.preventDefault();
