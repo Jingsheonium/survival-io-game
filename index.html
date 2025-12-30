@@ -108,8 +108,64 @@
 
             // World container
             const world = new PIXI.Container();
+            world.sortableChildren = true; // Enable z-index sorting
             app.stage.addChild(world);
 
+            // Block highlight sprite (2 frames: 0=normal, 1=pressed)
+            const selectSprite = new PIXI.Sprite(selectTex);
+            selectSprite.width = TILE_SIZE;
+            selectSprite.height = TILE_SIZE;
+            selectSprite.visible = false;
+            selectSprite.zIndex = 1000; // Ensure it's always on top
+            world.addChild(selectSprite);
+
+            // Track hovered tile position
+            let hoveredTileX = null;
+            let hoveredTileY = null;
+
+            // Mouse tracking
+            const mouse = { x: 0, y: 0, left: false, right: false };
+
+            // Mouse move handler - update hovered tile
+            window.addEventListener('mousemove', (e) => {
+                mouse.x = e.clientX;
+                mouse.y = e.clientY;
+
+                // Calculate world coordinates
+                const worldX = (mouse.x - world.x) / world.scale.x;
+                const worldY = (mouse.y - world.y) / world.scale.y;
+
+                // Calculate tile coordinates
+                hoveredTileX = Math.floor(worldX / TILE_SIZE);
+                hoveredTileY = Math.floor(worldY / TILE_SIZE);
+
+                // Show highlight
+                selectSprite.visible = true;
+            });
+
+            // Mouse down - change to pressed frame
+            window.addEventListener('mousedown', (e) => {
+                if (e.button === 0) {
+                    mouse.left = true;
+                    selectSprite.texture = PIXI.Texture.from('Assets/Image/select.png', {
+                        frame: new PIXI.Rectangle(0, TILE_SIZE, TILE_SIZE, TILE_SIZE) // Frame 1 (pressed)
+                    });
+                } else if (e.button === 2) {
+                    mouse.right = true;
+                }
+            });
+
+            // Mouse up - change back to normal frame
+            window.addEventListener('mouseup', (e) => {
+                if (e.button === 0) {
+                    mouse.left = false;
+                    selectSprite.texture = PIXI.Texture.from('Assets/Image/select.png', {
+                        frame: new PIXI.Rectangle(0, 0, TILE_SIZE, TILE_SIZE) // Frame 0 (normal)
+                    });
+                } else if (e.button === 2) {
+                    mouse.right = false;
+                }
+            });
 
 
             // Chunk-based world data
@@ -300,11 +356,6 @@
                 app.canvas.addEventListener('mouseup', (e) => {
                     if (e.button === 0) mouse.left = false;
                     if (e.button === 2) mouse.right = false;
-
-                    // Update highlight sprite to show normal state (frame 0)
-                    if (hoveredTileX !== null && hoveredTileY !== null) {
-                        selectSprite.texture.frame = 0; // Frame 0 for normal state
-                    }
                 });
 
                 app.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -569,6 +620,12 @@
                             infoElement.textContent = `FPS: ${fps} | Location: ${locX}, ${locY} | Zoom: ${zoom}x`;
                         }
 
+                        // Update select sprite position to hovered tile
+                        if (hoveredTileX !== null && hoveredTileY !== null) {
+                            selectSprite.x = hoveredTileX * TILE_SIZE;
+                            selectSprite.y = hoveredTileY * TILE_SIZE;
+                        }
+
                         // Handle input (left=break/dirt, right=place/grass)
                         // Only allow building in normal mode, not in freelook
                         if ((mouse.left || mouse.right) && !isAltPressed) {
@@ -603,26 +660,6 @@
                         crosshairGraphics.lineTo(centerX, centerY + size);
                         app.stage.addChild(crosshairGraphics);
 
-                        // Block highlight (world space - shows which block is hovered)
-                        const worldMouseX = (mouse.x - world.x) / camera.zoom;
-                        const worldMouseY = (mouse.y - world.y) / camera.zoom;
-                        const tileX = Math.floor(worldMouseX / TILE_SIZE);
-                        const tileY = Math.floor(worldMouseY / TILE_SIZE);
-
-                        const highlightGraphics = new PIXI.Graphics();
-                        // Use different sprite based on mouse state: 0 = not pressed, 1 = pressed
-                        // Make it VERY visible with bright colors and thick lines
-                        const highlightAlpha = (mouse.left || mouse.right) ? 1.0 : 0.8;
-                        const highlightColor = (mouse.left || mouse.right) ? 0xFF0000 : 0xFFFF00; // Red when clicking, yellow when hovering
-
-                        highlightGraphics.lineStyle(4, highlightColor, highlightAlpha); // Thick line
-                        highlightGraphics.drawRect(
-                            tileX * TILE_SIZE,
-                            tileY * TILE_SIZE,
-                            TILE_SIZE,
-                            TILE_SIZE
-                        );
-                        world.addChild(highlightGraphics);
                     });
 
                     // Render function - chunk-based with caching
@@ -770,19 +807,31 @@
 
                         overlayGraphics = new PIXI.Graphics();
 
-                        // Multi-layer grid system (when G is pressed)
+                        // 4. White visual grid (aligned with world grid) - ALWAYS RENDER
+                        overlayGraphics.lineStyle(1, 0xffffff, 0.2); // Thicker lines for visibility
+
+                        // Calculate visible area for grid
+                        const playerChunkX = Math.round(player.x / TILE_SIZE / CHUNK_SIZE);
+                        const playerChunkY = Math.round(player.y / TILE_SIZE / CHUNK_SIZE);
+                        const renderDistance = Math.min(5, Math.ceil(5 / Math.max(camera.zoom, 1.0)));
+                        const startX = (playerChunkX - renderDistance) * CHUNK_SIZE;
+                        const endX = (playerChunkX + renderDistance + 1) * CHUNK_SIZE;
+                        const startY = (playerChunkY - renderDistance) * CHUNK_SIZE;
+                        const endY = (playerChunkY + renderDistance + 1) * CHUNK_SIZE;
+
+                        for (let x = startX; x <= endX; x++) {
+                            const visualX = x * TILE_SIZE;
+                            overlayGraphics.moveTo(visualX, startY * TILE_SIZE);
+                            overlayGraphics.lineTo(visualX, endY * TILE_SIZE);
+                        }
+                        for (let y = startY; y <= endY; y++) {
+                            const visualY = y * TILE_SIZE;
+                            overlayGraphics.moveTo(startX * TILE_SIZE, visualY);
+                            overlayGraphics.lineTo(endX * TILE_SIZE, visualY);
+                        }
+
+                        // Multi-layer DEBUG grid system (when G is pressed)
                         if (showGrid) {
-                            // Calculate player chunk position
-                            const playerChunkX = Math.round(player.x / TILE_SIZE / CHUNK_SIZE);
-                            const playerChunkY = Math.round(player.y / TILE_SIZE / CHUNK_SIZE);
-                            const renderDistance = Math.min(5, Math.ceil(5 / Math.max(camera.zoom, 1.0)));
-
-                            // Grid bounds based on render distance (in tiles)
-                            const startX = (playerChunkX - renderDistance) * CHUNK_SIZE;
-                            const endX = (playerChunkX + renderDistance + 1) * CHUNK_SIZE;
-                            const startY = (playerChunkY - renderDistance) * CHUNK_SIZE;
-                            const endY = (playerChunkY + renderDistance + 1) * CHUNK_SIZE;
-
                             // 1. Green shades for grass tiles
                             for (let y = startY; y < endY; y++) {
                                 for (let x = startX; x < endX; x++) {
@@ -821,22 +870,9 @@
                                 overlayGraphics.moveTo(startX * TILE_SIZE, y * TILE_SIZE);
                                 overlayGraphics.lineTo(endX * TILE_SIZE, y * TILE_SIZE);
                             }
-                            overlayGraphics.stroke(); // Make lines visible
-
-                            // 4. White visual grid (offset by 0.5 from world grid)
-                            overlayGraphics.lineStyle(0.25, 0xffffff, 0.2); // Very thin, subtle lines
-                            for (let x = startX; x <= endX; x++) {
-                                const visualX = (x + 0.5) * TILE_SIZE;
-                                overlayGraphics.moveTo(visualX, startY * TILE_SIZE);
-                                overlayGraphics.lineTo(visualX, endY * TILE_SIZE);
-                            }
-                            for (let y = startY; y <= endY; y++) {
-                                const visualY = (y + 0.5) * TILE_SIZE;
-                                overlayGraphics.moveTo(startX * TILE_SIZE, visualY);
-                                overlayGraphics.lineTo(endX * TILE_SIZE, visualY);
-                            }
-                            overlayGraphics.stroke(); // Make lines visible
                         }
+
+                        overlayGraphics.stroke(); // Make lines visible
 
                         world.addChild(overlayGraphics);
                     }
