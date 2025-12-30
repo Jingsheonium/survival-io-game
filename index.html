@@ -110,15 +110,6 @@
             const world = new PIXI.Container();
             app.stage.addChild(world);
 
-            // Highlight sprite (select.png shows on hovered block)
-            const selectSprite = new PIXI.Sprite(selectTex);
-            selectSprite.visible = false;
-            world.addChild(selectSprite);
-
-            // Track hovered tile
-            let hoveredTileX = null;
-            let hoveredTileY = null;
-
 
 
             // Chunk-based world data
@@ -248,6 +239,24 @@
 
                 // Mouse
                 const mouse = { x: 0, y: 0, left: false, right: false };
+
+                // Select highlight sprite
+                const selectSprite = new PIXI.Sprite(selectTex);
+                selectSprite.visible = false;
+                world.addChild(selectSprite);
+
+                // Track hovered tile
+                let hoveredTileX = null;
+                let hoveredTileY = null;
+
+                // Game loop - runs every frame
+                app.ticker.add((delta) => {
+                    // Update select sprite position every frame
+                    if (hoveredTileX !== null && hoveredTileY !== null) {
+                        selectSprite.x = hoveredTileX * TILE_SIZE;
+                        selectSprite.y = hoveredTileY * TILE_SIZE;
+                    }
+                });
 
                 app.canvas.addEventListener('mousemove', (e) => {
                     mouse.x = e.clientX;
