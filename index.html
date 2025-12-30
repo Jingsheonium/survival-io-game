@@ -59,14 +59,15 @@
     <script>
         // Wait for PixiJS to load
         window.addEventListener('load', async () => {
+            console.log('✅ FIXED VERSION LOADED - No loading bar code');
 
-            updateProgress(10, 'Initializing PixiJS...');
+
 
             // Settings
             const TILE_SIZE = 16;
             const CHUNK_SIZE = 16;
 
-            updateProgress(20, 'Creating renderer...');
+
 
             // PixiJS App (v8 requires await)
             const app = new PIXI.Application();
@@ -501,16 +502,12 @@
                             getChunk(cx, cy); // This generates and caches the chunk
                             chunksGenerated++;
                             if (chunksGenerated % 100 === 0) {
-                                const percent = Math.floor((chunksGenerated / totalChunks) * 70) + 20; // 20-90%
-                                updateProgress(percent, `Generating world... ${Math.floor(chunksGenerated / totalChunks * 100)}%`);
+                                // Chunk generation progress (removed loading bar)
                             }
                         }
                     }
 
-                    updateProgress(100, 'Ready!');
-                    setTimeout(() => {
-                        document.getElementById('loadingBar').style.display = 'none';
-                    }, 500);
+
 
 
                     let lastTime = performance.now();
