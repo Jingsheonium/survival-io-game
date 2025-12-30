@@ -1,10 +1,10 @@
 {
-  "playerSpeed": 200,
+  "playerSpeed": 400,
   "defaultZoom": 2,
   "minZoom": 0.1,
   "maxZoom": 50,
   "chunkSize": 16,
-  "renderDistance": 81,
+  "renderDistance": 10,
   "lodThreshold": 0.8,
   "notes": ""
 }

@@ -218,10 +218,16 @@
 
                 const col = idx % 4;
                 const row = Math.floor(idx / 4);
+
+                // Dynamic tile size calculation (supports High-Res textures)
+                // Assumes 4x4 grid layout regardless of pixel size
+                const tileW = sourceTexture.width / 4;
+                const tileH = sourceTexture.height / 4;
+
                 // In PixiJS v8, create texture from source with frame rectangle
                 const tex = new PIXI.Texture({
                     source: sourceTexture.source,
-                    frame: new PIXI.Rectangle(col * 16, row * 16, 16, 16)
+                    frame: new PIXI.Rectangle(col * tileW, row * tileH, tileW, tileH)
                 });
 
                 cache[idx] = tex;
