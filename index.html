@@ -776,20 +776,6 @@
                             }
                         }
 
-                        // LOD Switch Detection
-                        const isLowLOD = camera.zoom < config.lodThreshold;
-                        const currentLODMode = isLowLOD ? 'low' : 'high';
-
-                        if (currentLODMode !== lastLODMode) {
-                            // Clear chunks to force refresh when switching LOD modes
-                            for (const container of chunkContainers.values()) {
-                                world.removeChild(container);
-                                container.destroy({ children: true });
-                            }
-                            chunkContainers.clear();
-                            lastLODMode = currentLODMode;
-                        }
-
                         // Render new chunks (only if not already rendered)
                         // Time Slicing: Limit creation to prevent lag spikes
                         const MAX_CHUNKS_PER_FRAME = 4;
