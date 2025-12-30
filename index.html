@@ -216,13 +216,31 @@
                     return cache[idx];
                 }
 
-                const col = idx % 4;
-                const row = Math.floor(idx / 4);
+                const w = sourceTexture.width || 64;
+                const h = sourceTexture.height || 64;
 
-                // Dynamic tile size calculation (supports High-Res textures)
-                // Assumes 4x4 grid layout regardless of pixel size
-                const tileW = (sourceTexture.width || 64) / 4;
-                const tileH = (sourceTexture.height || 64) / 4;
+                let tileW, tileH, col, row;
+
+                // Smart Layout Detection based on Aspect Ratio
+                if (Math.abs(w - h) < 4) { // Tolerance for square
+                    // 4x4 Grid (Standard)
+                    tileW = w / 4;
+                    tileH = h / 4;
+                    col = idx % 4;
+                    row = Math.floor(idx / 4);
+                } else if (w > h) {
+                    // Horizontal Strip (16x1)
+                    tileW = w / 16;
+                    tileH = h;
+                    col = idx;
+                    row = 0;
+                } else {
+                    // Vertical Strip (1x16)
+                    tileW = w;
+                    tileH = h / 16;
+                    col = 0;
+                    row = idx;
+                }
 
                 // In PixiJS v8, create texture from source with frame rectangle
                 const tex = new PIXI.Texture({
@@ -777,26 +795,16 @@
                         const MAX_CHUNKS_PER_FRAME = 4;
                         let chunksCreated = 0;
 
-                        // Sort chunks by distance from player (Center-Out loading)
-                        // Satisfies OCD :)
-                        const pcx = Math.floor(player.x / (CHUNK_SIZE * TILE_SIZE));
-                        const pcy = Math.floor(player.y / (CHUNK_SIZE * TILE_SIZE));
-
-                        const sortedKeys = Array.from(chunksToRender).sort((a, b) => {
-                            const [ax, ay] = a.split(',').map(Number);
-                            const [bx, by] = b.split(',').map(Number);
-                            const distA = (ax - pcx) ** 2 + (ay - pcy) ** 2;
-                            const distB = (bx - pcx) ** 2 + (by - pcy) ** 2;
-                            return distA - distB;
-                        });
-
-                        for (const key of sortedKeys) {
+                        // Loop through chunks (standard scanline order: top-to-bottom)
+                        for (const key of chunksToRender) {
                             if (!chunkContainers.has(key)) {
                                 if (chunksCreated < MAX_CHUNKS_PER_FRAME) {
                                     const [cx, cy] = key.split(',').map(Number);
                                     renderChunk(cx, cy);
                                     chunksCreated++;
                                 }
+                                // If we hit limit, we just stop creating for this frame. 
+                                // They will be picked up next frame.
                             }
                             chunksRendered++; // Maintain stat count
                         }
