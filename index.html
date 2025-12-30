@@ -221,8 +221,8 @@
 
                 // Dynamic tile size calculation (supports High-Res textures)
                 // Assumes 4x4 grid layout regardless of pixel size
-                const tileW = sourceTexture.width / 4;
-                const tileH = sourceTexture.height / 4;
+                const tileW = (sourceTexture.width || 64) / 4;
+                const tileH = (sourceTexture.height || 64) / 4;
 
                 // In PixiJS v8, create texture from source with frame rectangle
                 const tex = new PIXI.Texture({
@@ -758,24 +758,47 @@
                             }
                         }
 
+                        // LOD Switch Detection
+                        const isLowLOD = camera.zoom < config.lodThreshold;
+                        const currentLODMode = isLowLOD ? 'low' : 'high';
+
+                        if (currentLODMode !== lastLODMode) {
+                            // Clear chunks to force refresh when switching LOD modes
+                            for (const container of chunkContainers.values()) {
+                                world.removeChild(container);
+                                container.destroy({ children: true });
+                            }
+                            chunkContainers.clear();
+                            lastLODMode = currentLODMode;
+                        }
+
                         // Render new chunks (only if not already rendered)
                         // Time Slicing: Limit creation to prevent lag spikes
                         const MAX_CHUNKS_PER_FRAME = 4;
                         let chunksCreated = 0;
 
-                        // Sort keys by distance from center so we load nearest first? 
-                        // For now just loop. The set iteration order is insertion order usually.
+                        // Sort chunks by distance from player (Center-Out loading)
+                        // Satisfies OCD :)
+                        const pcx = Math.floor(player.x / (CHUNK_SIZE * TILE_SIZE));
+                        const pcy = Math.floor(player.y / (CHUNK_SIZE * TILE_SIZE));
 
-                        for (const key of chunksToRender) {
+                        const sortedKeys = Array.from(chunksToRender).sort((a, b) => {
+                            const [ax, ay] = a.split(',').map(Number);
+                            const [bx, by] = b.split(',').map(Number);
+                            const distA = (ax - pcx) ** 2 + (ay - pcy) ** 2;
+                            const distB = (bx - pcx) ** 2 + (by - pcy) ** 2;
+                            return distA - distB;
+                        });
+
+                        for (const key of sortedKeys) {
                             if (!chunkContainers.has(key)) {
                                 if (chunksCreated < MAX_CHUNKS_PER_FRAME) {
                                     const [cx, cy] = key.split(',').map(Number);
                                     renderChunk(cx, cy);
                                     chunksCreated++;
                                 }
-                                // If we hit limit, we just stop creating for this frame. 
-                                // They will be picked up next frame.
                             }
+                            chunksRendered++; // Maintain stat count
                         }
 
                         // Update stats with chunk count
@@ -790,20 +813,12 @@
 
                         // LOD: If zoomed out below threshold, render as solid color rectangles
                         if (camera.zoom < config.lodThreshold) {
+                            // LOD Optimization: Draw one single rectangle for the whole chunk
+                            // to drastically reduce draw calls when zoomed out
                             const graphics = new PIXI.Graphics();
-                            for (let ty = 0; ty < CHUNK_SIZE; ty++) {
-                                for (let tx = 0; tx < CHUNK_SIZE; tx++) {
-                                    const worldX = cx * CHUNK_SIZE + tx;
-                                    const worldY = cy * CHUNK_SIZE + ty;
-                                    const tileType = chunk[ty][tx];
-
-                                    // Use average color based on tile type
-                                    const color = tileType === 1 ? avgGrassColor : avgDirtColor;
-                                    graphics.beginFill(color);
-                                    graphics.drawRect(worldX * TILE_SIZE, worldY * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                                    graphics.endFill();
-                                }
-                            }
+                            graphics.beginFill(avgGrassColor); // Use average grass color for the block
+                            graphics.drawRect(cx * CHUNK_SIZE * TILE_SIZE, cy * CHUNK_SIZE * TILE_SIZE, CHUNK_SIZE * TILE_SIZE, CHUNK_SIZE * TILE_SIZE);
+                            graphics.endFill();
                             container.addChild(graphics);
                             chunkContainers.set(key, container);
                             container.zIndex = 0;
