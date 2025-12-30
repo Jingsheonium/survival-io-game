@@ -194,6 +194,9 @@
                     world.removeChild(container);
                     container.destroy({ children: true });
                     chunkContainers.delete(key);
+
+                    // Immediate re-render to prevent black flash
+                    renderChunk(cx, cy);
                 }
             }
 
@@ -778,7 +781,7 @@
 
                         // Render new chunks (only if not already rendered)
                         // Time Slicing: Limit creation to prevent lag spikes
-                        const MAX_CHUNKS_PER_FRAME = 4;
+                        const MAX_CHUNKS_PER_FRAME = 20;
                         let chunksCreated = 0;
 
                         // Loop through chunks (standard scanline order: top-to-bottom)
@@ -797,7 +800,8 @@
 
                         // Update stats with chunk count
                         const fps = Math.round(app.ticker.FPS);
-                        document.getElementById('info').textContent = `FPS: ${fps} | Location: ${Math.floor(player.x)}, ${Math.floor(player.y)} | Zoom: ${camera.zoom.toFixed(2)}x | Chunks: ${chunksRendered}`;
+                        const texInfo = `G:${grassTex?.width}x${grassTex?.height} D:${dirtTex?.width}x${dirtTex?.height}`;
+                        document.getElementById('info').textContent = `FPS: ${fps} | Loc: ${Math.floor(player.x)},${Math.floor(player.y)} | Zoom: ${camera.zoom.toFixed(2)}x | Chunks: ${chunksRendered} | ${texInfo}`;
                     }
                     // Render a single chunk
                     function renderChunk(cx, cy) {
@@ -849,8 +853,8 @@
                                     const grassSprite = new PIXI.Sprite(grassTexture);
                                     // Dual Grid: Visual tile top-left at (worldX + 0.5, worldY + 0.5)
                                     // This aligns the 16x16 tile with the "Visual Grid" (White Grid) cells
-                                    grassSprite.x = (worldX + 0.5) * TILE_SIZE;
-                                    grassSprite.y = (worldY + 0.5) * TILE_SIZE;
+                                    grassSprite.x = worldX * TILE_SIZE;
+                                    grassSprite.y = worldY * TILE_SIZE;
                                     // Default anchor is (0,0), so it draws from top-left
 
                                     grassSprite.width = TILE_SIZE;
