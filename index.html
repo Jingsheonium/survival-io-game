@@ -112,7 +112,17 @@
             app.stage.addChild(world);
 
             // Block highlight sprite (2 frames: 0=normal, 1=pressed)
-            const selectSprite = new PIXI.Sprite(selectTex);
+            // Assumes horizontal sprite sheet (32x16)
+            const selectTexNormal = new PIXI.Texture({
+                source: selectTex.source,
+                frame: new PIXI.Rectangle(0, 0, TILE_SIZE, TILE_SIZE)
+            });
+            const selectTexPressed = new PIXI.Texture({
+                source: selectTex.source,
+                frame: new PIXI.Rectangle(TILE_SIZE, 0, TILE_SIZE, TILE_SIZE)
+            });
+
+            const selectSprite = new PIXI.Sprite(selectTexNormal);
             selectSprite.width = TILE_SIZE;
             selectSprite.height = TILE_SIZE;
             selectSprite.visible = false;
@@ -135,7 +145,7 @@
                 const worldX = (mouse.x - world.x) / world.scale.x;
                 const worldY = (mouse.y - world.y) / world.scale.y;
 
-                // Calculate tile coordinates
+                // Calculate tile coordinates (floor correctly)
                 hoveredTileX = Math.floor(worldX / TILE_SIZE);
                 hoveredTileY = Math.floor(worldY / TILE_SIZE);
 
@@ -143,25 +153,21 @@
                 selectSprite.visible = true;
             });
 
-            // Mouse down - change to pressed frame
+            // Mouse down - change to pressed texture
             window.addEventListener('mousedown', (e) => {
                 if (e.button === 0) {
                     mouse.left = true;
-                    selectSprite.texture = PIXI.Texture.from('Assets/Image/select.png', {
-                        frame: new PIXI.Rectangle(0, TILE_SIZE, TILE_SIZE, TILE_SIZE) // Frame 1 (pressed)
-                    });
+                    selectSprite.texture = selectTexPressed;
                 } else if (e.button === 2) {
                     mouse.right = true;
                 }
             });
 
-            // Mouse up - change back to normal frame
+            // Mouse up - change back to normal texture
             window.addEventListener('mouseup', (e) => {
                 if (e.button === 0) {
                     mouse.left = false;
-                    selectSprite.texture = PIXI.Texture.from('Assets/Image/select.png', {
-                        frame: new PIXI.Rectangle(0, 0, TILE_SIZE, TILE_SIZE) // Frame 0 (normal)
-                    });
+                    selectSprite.texture = selectTexNormal;
                 } else if (e.button === 2) {
                     mouse.right = false;
                 }
