@@ -111,24 +111,6 @@
             world.sortableChildren = true; // Enable z-index sorting
             app.stage.addChild(world);
 
-            // Block highlight sprite (2 frames: 0=normal, 1=pressed)
-            // Assumes horizontal sprite sheet (32x16)
-            const selectTexNormal = new PIXI.Texture({
-                source: selectTex.source,
-                frame: new PIXI.Rectangle(0, 0, TILE_SIZE, TILE_SIZE)
-            });
-            const selectTexPressed = new PIXI.Texture({
-                source: selectTex.source,
-                frame: new PIXI.Rectangle(TILE_SIZE, 0, TILE_SIZE, TILE_SIZE)
-            });
-
-            const selectSprite = new PIXI.Sprite(selectTexNormal);
-            selectSprite.width = TILE_SIZE;
-            selectSprite.height = TILE_SIZE;
-            selectSprite.visible = false;
-            selectSprite.zIndex = 1000; // Ensure it's always on top
-            world.addChild(selectSprite);
-
             // Track hovered tile position
             let hoveredTileX = null;
             let hoveredTileY = null;
@@ -136,42 +118,7 @@
             // Mouse tracking
             const mouse = { x: 0, y: 0, left: false, right: false };
 
-            // Mouse move handler - update hovered tile
-            window.addEventListener('mousemove', (e) => {
-                mouse.x = e.clientX;
-                mouse.y = e.clientY;
-
-                // Calculate world coordinates
-                const worldX = (mouse.x - world.x) / world.scale.x;
-                const worldY = (mouse.y - world.y) / world.scale.y;
-
-                // Calculate tile coordinates (floor correctly)
-                hoveredTileX = Math.floor(worldX / TILE_SIZE);
-                hoveredTileY = Math.floor(worldY / TILE_SIZE);
-
-                // Show highlight
-                selectSprite.visible = true;
-            });
-
-            // Mouse down - change to pressed texture
-            window.addEventListener('mousedown', (e) => {
-                if (e.button === 0) {
-                    mouse.left = true;
-                    selectSprite.texture = selectTexPressed;
-                } else if (e.button === 2) {
-                    mouse.right = true;
-                }
-            });
-
-            // Mouse up - change back to normal texture
-            window.addEventListener('mouseup', (e) => {
-                if (e.button === 0) {
-                    mouse.left = false;
-                    selectSprite.texture = selectTexNormal;
-                } else if (e.button === 2) {
-                    mouse.right = false;
-                }
-            });
+            // NOTE: selectSprite and event handlers moved inside Promise.all().then() to ensure texture is loaded
 
 
             // Chunk-based world data
@@ -528,8 +475,79 @@
                     PIXI.Assets.load('Assets/Image/Tile/grass.png').catch(() => {
                         console.warn('grass.png not found, using placeholder');
                         return createPlaceholderTexture(0x228B22); // Green
+                    }),
+                    PIXI.Assets.load('Assets/Image/select.png').catch(() => {
+                        console.warn('select.png not found, using placeholder');
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 32; canvas.height = 16;
+                        const ctx = canvas.getContext('2d');
+                        ctx.strokeStyle = '#FFFF00'; ctx.lineWidth = 2; ctx.strokeRect(0, 0, 16, 16); // Normal
+                        ctx.strokeStyle = '#FF0000'; ctx.lineWidth = 2; ctx.strokeRect(16, 0, 16, 16); // Pressed
+                        return PIXI.Texture.from(canvas);
                     })
-                ]).then(([dirtTex, grassTex]) => {
+                ]).then(([dirtTexLoaded, grassTexLoaded, selectTexLoaded]) => {
+                    // Update global references
+                    const dirtTex = dirtTexLoaded;
+                    const grassTex = grassTexLoaded;
+                    const selectTex = selectTexLoaded;
+
+                    // Setup Block Highlight (using loaded texture)
+                    // Assumes horizontal sprite sheet (32x16)
+                    const selectTexNormal = new PIXI.Texture({
+                        source: selectTex.source,
+                        frame: new PIXI.Rectangle(0, 0, TILE_SIZE, TILE_SIZE)
+                    });
+                    const selectTexPressed = new PIXI.Texture({
+                        source: selectTex.source,
+                        frame: new PIXI.Rectangle(TILE_SIZE, 0, TILE_SIZE, TILE_SIZE)
+                    });
+
+                    const selectSprite = new PIXI.Sprite(selectTexNormal);
+                    selectSprite.width = TILE_SIZE;
+                    selectSprite.height = TILE_SIZE;
+                    selectSprite.visible = false;
+                    selectSprite.zIndex = 1000; // Ensure it's always on top
+                    world.addChild(selectSprite);
+
+                    // Mouse move handler - update hovered tile
+                    window.addEventListener('mousemove', (e) => {
+                        mouse.x = e.clientX;
+                        mouse.y = e.clientY;
+
+                        // Calculate world coordinates
+                        const worldX = (mouse.x - world.x) / world.scale.x;
+                        const worldY = (mouse.y - world.y) / world.scale.y;
+
+                        // Calculate tile coordinates (floor correctly)
+                        hoveredTileX = Math.floor(worldX / TILE_SIZE);
+                        hoveredTileY = Math.floor(worldY / TILE_SIZE);
+
+                        // Show highlight
+                        selectSprite.visible = true;
+                    });
+
+                    // Mouse down - change to pressed texture
+                    window.addEventListener('mousedown', (e) => {
+                        if (e.button === 0) {
+                            mouse.left = true;
+                            // Change texture if selectSprite is ready
+                            if (selectSprite) selectSprite.texture = selectTexPressed;
+                        } else if (e.button === 2) {
+                            mouse.right = true;
+                        }
+                    });
+
+                    // Mouse up - change back to normal texture
+                    window.addEventListener('mouseup', (e) => {
+                        if (e.button === 0) {
+                            mouse.left = false;
+                            if (selectSprite) selectSprite.texture = selectTexNormal;
+                        } else if (e.button === 2) {
+                            mouse.right = false;
+                        }
+                    });
+
+
                     // Calculate average colors for LOD rendering
                     function getAverageColor(texture) {
                         const canvas = document.createElement('canvas');
@@ -747,7 +765,9 @@
                             }
                             container.addChild(graphics);
                             chunkContainers.set(key, container);
+                            container.zIndex = 0;
                             world.addChild(container);
+                            world.sortChildren();
                             return;
                         }
 
@@ -788,7 +808,9 @@
                         }
 
                         chunkContainers.set(key, container);
+                        container.zIndex = 0; // Explicitly set chunk z-index (bottom)
                         world.addChild(container);
+                        world.sortChildren(); // Force sort to ensure layering 
                     }
 
                     // Render overlays (grid, highlights, etc) - called after chunk rendering
@@ -814,7 +836,7 @@
                         overlayGraphics = new PIXI.Graphics();
 
                         // 4. White visual grid (aligned with world grid) - ALWAYS RENDER
-                        overlayGraphics.lineStyle(1, 0xffffff, 0.2); // Thicker lines for visibility
+                        overlayGraphics.lineStyle(1, 0xffffff, 0.5); // Thicker lines for visibility
 
                         // Calculate visible area for grid
                         const playerChunkX = Math.round(player.x / TILE_SIZE / CHUNK_SIZE);
@@ -826,12 +848,12 @@
                         const endY = (playerChunkY + renderDistance + 1) * CHUNK_SIZE;
 
                         for (let x = startX; x <= endX; x++) {
-                            const visualX = x * TILE_SIZE;
+                            const visualX = (x + 0.5) * TILE_SIZE;
                             overlayGraphics.moveTo(visualX, startY * TILE_SIZE);
                             overlayGraphics.lineTo(visualX, endY * TILE_SIZE);
                         }
                         for (let y = startY; y <= endY; y++) {
-                            const visualY = y * TILE_SIZE;
+                            const visualY = (y + 0.5) * TILE_SIZE;
                             overlayGraphics.moveTo(startX * TILE_SIZE, visualY);
                             overlayGraphics.lineTo(endX * TILE_SIZE, visualY);
                         }
@@ -880,6 +902,7 @@
 
                         overlayGraphics.stroke(); // Make lines visible
 
+                        overlayGraphics.zIndex = 2000; // Ensure overlays are on top of chunks (zIndex 0) and selection (zIndex 1000)
                         world.addChild(overlayGraphics);
                     }
                 });
