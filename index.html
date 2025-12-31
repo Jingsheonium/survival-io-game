@@ -3,6 +3,7 @@
 
 <head>
     <title>tyls.io</title>
+    <link rel="icon" href="data:,">
     <style>
         @font-face {
             font-family: 'Minecraft';
@@ -111,6 +112,12 @@
             world.sortableChildren = true; // Enable z-index sorting
             app.stage.addChild(world);
 
+            // Layers for Z-sorting (Fixes "cutoff" grass/half tiles)
+            const dirtLayer = new PIXI.Container();
+            const grassLayer = new PIXI.Container();
+            world.addChild(dirtLayer);
+            world.addChild(grassLayer);
+
             // Track hovered tile position
             let hoveredTileX = null;
             let hoveredTileY = null;
@@ -124,7 +131,7 @@
             // Chunk-based world data
             // RENDER_DISTANCE now comes from config.renderDistance
             const chunks = new Map(); // "cx,cy" -> chunk data
-            const chunkContainers = new Map(); // "cx,cy" -> PIXI.Container
+            const chunkContainers = new Map(); // "cx,cy" -> { dirt: Container, grass: Container }
             let chunksRendered = 0;
 
             // renderChunk function reference - defined inside Promise.all().then() but accessed by setTile
@@ -193,9 +200,18 @@
                 // Mark chunk for re-render
                 const key = `${cx},${cy}`;
                 if (chunkContainers.has(key)) {
-                    const container = chunkContainers.get(key);
-                    world.removeChild(container);
-                    container.destroy({ children: true });
+                    const containers = chunkContainers.get(key);
+
+                    // Remove both layers
+                    if (containers.dirt) {
+                        dirtLayer.removeChild(containers.dirt);
+                        containers.dirt.destroy({ children: true });
+                    }
+                    if (containers.grass) {
+                        grassLayer.removeChild(containers.grass);
+                        containers.grass.destroy({ children: true });
+                    }
+
                     chunkContainers.delete(key);
 
                     // Immediate re-render to prevent black flash
@@ -660,7 +676,7 @@
                         const zoom = camera ? camera.zoom.toFixed(2) : '0.00';
                         const infoElement = document.getElementById('info');
                         if (infoElement) {
-                            infoElement.textContent = `FPS: ${fps} | Location: ${locX}, ${locY} | Zoom: ${zoom}x`;
+                            infoElement.textContent = `FPS: ${fps} | x: ${locX} y: ${locY} | Zoom: ${zoom}x`;
                         }
 
                         // Update world-mouse interaction every frame (fixes "laggy" highlight on camera move)
@@ -735,7 +751,8 @@
                     renderChunk = function (cx, cy) {
                         const key = `${cx},${cy}`;
                         const chunk = getChunk(cx, cy);
-                        const container = new PIXI.Container();
+                        const chunkDirt = new PIXI.Container();
+                        const chunkGrass = new PIXI.Container();
 
                         // LOD: If zoomed out below threshold, render simple colored tiles (Minimap style)
                         if (camera.zoom < config.lodThreshold) {
@@ -758,11 +775,11 @@
                                 }
                             }
 
-                            container.addChild(graphics);
-                            chunkContainers.set(key, container);
-                            container.zIndex = 0;
-                            world.addChild(container);
-                            world.sortChildren();
+                            chunkDirt.addChild(graphics);
+                            chunkContainers.set(key, { dirt: chunkDirt, grass: chunkGrass });
+
+                            dirtLayer.addChild(chunkDirt);
+
                             return;
                         }
 
@@ -772,7 +789,7 @@
                                 const worldX = cx * CHUNK_SIZE + tx;
                                 const worldY = cy * CHUNK_SIZE + ty;
 
-                                // Dirt tile
+                                // Dirt tile -> Dirt Layer
                                 const dirtIdx = getDirtIdx(worldX, worldY);
                                 const dirtTexture = getTileTexture(dirtTex, dirtIdx);
                                 const dirtSprite = new PIXI.Sprite(dirtTexture);
@@ -780,9 +797,9 @@
                                 dirtSprite.y = worldY * TILE_SIZE;
                                 dirtSprite.width = TILE_SIZE;
                                 dirtSprite.height = TILE_SIZE;
-                                container.addChild(dirtSprite);
+                                chunkDirt.addChild(dirtSprite);
 
-                                // Grass tile
+                                // Grass tile -> Grass Layer
                                 const hasGrass = getTile(worldX, worldY) === 1 ||
                                     getTile(worldX + 1, worldY) === 1 ||
                                     getTile(worldX, worldY + 1) === 1 ||
@@ -800,15 +817,14 @@
 
                                     grassSprite.width = TILE_SIZE;
                                     grassSprite.height = TILE_SIZE;
-                                    container.addChild(grassSprite);
+                                    chunkGrass.addChild(grassSprite);
                                 }
                             }
                         }
 
-                        chunkContainers.set(key, container);
-                        container.zIndex = 0;
-                        world.addChild(container);
-                        world.sortChildren();
+                        chunkContainers.set(key, { dirt: chunkDirt, grass: chunkGrass });
+                        dirtLayer.addChild(chunkDirt);
+                        grassLayer.addChild(chunkGrass);
                     }
 
                     function render() {
@@ -819,9 +835,15 @@
                         const currentLODState = camera.zoom < config.lodThreshold;
                         if (lastLODState !== currentLODState) {
                             // Clear all chunks when crossing LOD threshold
-                            for (const [key, container] of chunkContainers.entries()) {
-                                world.removeChild(container);
-                                container.destroy();
+                            for (const [key, containers] of chunkContainers.entries()) {
+                                if (containers.dirt) {
+                                    dirtLayer.removeChild(containers.dirt);
+                                    containers.dirt.destroy();
+                                }
+                                if (containers.grass) {
+                                    grassLayer.removeChild(containers.grass);
+                                    containers.grass.destroy();
+                                }
                             }
                             chunkContainers.clear();
                             lastLODState = currentLODState;
@@ -861,10 +883,16 @@
                         }
 
                         // Remove chunks that are out of range
-                        for (const [key, container] of chunkContainers.entries()) {
+                        for (const [key, containers] of chunkContainers.entries()) {
                             if (!chunksToRender.has(key)) {
-                                world.removeChild(container);
-                                container.destroy();
+                                if (containers.dirt) {
+                                    dirtLayer.removeChild(containers.dirt);
+                                    containers.dirt.destroy({ children: true });
+                                }
+                                if (containers.grass) {
+                                    grassLayer.removeChild(containers.grass);
+                                    containers.grass.destroy({ children: true });
+                                }
                                 chunkContainers.delete(key);
                             }
                         }
