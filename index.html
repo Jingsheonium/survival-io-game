@@ -20,7 +20,7 @@
             display: block;
             image-rendering: pixelated;
             image-rendering: crisp-edges;
-            cursor: crosshair;
+            cursor: url('Assets/Image/cursor.png') 0 0, auto;
         }
 
         #info {
@@ -109,6 +109,7 @@
             const grassTex = PIXI.Texture.from('Assets/Image/Tile/grass.png');
             const dirtTex = PIXI.Texture.from('Assets/Image/Tile/dirt.png');
             const selectTex = PIXI.Texture.from('Assets/Image/select.png');
+            const crosshairTex = PIXI.Texture.from('Assets/Image/crosshair.png');
 
             // World container
             const world = new PIXI.Container();
@@ -199,6 +200,7 @@
                 const tx = ((x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
                 const ty = ((y % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
                 const chunk = getChunk(cx, cy);
+                if (chunk[ty][tx] === value) return;
                 chunk[ty][tx] = value;
                 // Mark chunk for re-render
                 const key = `${cx},${cy}`;
@@ -738,16 +740,12 @@
                         }
 
                         // Crosshair (screen space - after transform)
-                        const crosshairGraphics = new PIXI.Graphics();
-                        crosshairGraphics.lineStyle(2, 0xffffff, 0.8);
-                        const centerX = app.screen.width / 2;
-                        const centerY = app.screen.height / 2;
-                        const size = 10;
-                        crosshairGraphics.moveTo(centerX - size, centerY);
-                        crosshairGraphics.lineTo(centerX + size, centerY);
-                        crosshairGraphics.moveTo(centerX, centerY - size);
-                        crosshairGraphics.lineTo(centerX, centerY + size);
-                        app.stage.addChild(crosshairGraphics);
+                        // Crosshair (Screen Space Sprite)
+                        const crosshairSprite = new PIXI.Sprite(crosshairTex);
+                        crosshairSprite.anchor.set(0.5);
+                        crosshairSprite.x = app.screen.width / 2;
+                        crosshairSprite.y = app.screen.height / 2;
+                        app.stage.addChild(crosshairSprite);
 
                     });
 
@@ -944,13 +942,12 @@
                             return;
                         }
 
-                        // Clear previous overlays
+                        // Reuse graphics object (Performance Optimization)
                         if (overlayGraphics) {
-                            world.removeChild(overlayGraphics);
-                            overlayGraphics.destroy();
+                            overlayGraphics.clear();
+                        } else {
+                            overlayGraphics = new PIXI.Graphics();
                         }
-
-                        overlayGraphics = new PIXI.Graphics();
 
                         // 4. White visual grid (aligned with world grid) - ALWAYS RENDER
                         overlayGraphics.lineStyle(0.5, 0xffffff, 0.2);
