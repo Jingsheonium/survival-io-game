@@ -6,7 +6,7 @@
     <style>
         @font-face {
             font-family: 'Minecraft';
-            src: url('../Assets/Font/Minecraft.ttf') format('truetype');
+            src: url('./Assets/Font/pixel.ttf') format('truetype');
         }
 
         body {
@@ -127,6 +127,9 @@
             const chunkContainers = new Map(); // "cx,cy" -> PIXI.Container
             let chunksRendered = 0;
 
+            // renderChunk function reference - defined inside Promise.all().then() but accessed by setTile
+            let renderChunk = null;
+
             // Simple Perlin-like noise
             function noise2D(x, y) {
                 const X = Math.floor(x) & 255;
@@ -196,7 +199,9 @@
                     chunkContainers.delete(key);
 
                     // Immediate re-render to prevent black flash
-                    renderChunk(cx, cy);
+                    if (renderChunk) {
+                        renderChunk(cx, cy);
+                    }
                 }
             }
 
@@ -730,8 +735,8 @@
                     // Render function - chunk-based with caching
                     let lastLODState = camera.zoom < config.lodThreshold;
 
-                    // Chunk Rendering Function (Moved to initGame scope)
-                    function renderChunk(cx, cy) {
+                    // Chunk Rendering Function - assign to outer scope variable
+                    renderChunk = function (cx, cy) {
                         const key = `${cx},${cy}`;
                         const chunk = getChunk(cx, cy);
                         const container = new PIXI.Container();
