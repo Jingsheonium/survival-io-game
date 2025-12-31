@@ -308,7 +308,8 @@
 
             function initGame() {
                 // Camera
-                const camera = { x: 0, y: 0, zoom: config.defaultZoom, freelook: false };
+                // Camera with targetZoom for spring effect
+                const camera = { x: 0, y: 0, zoom: config.defaultZoom, targetZoom: config.defaultZoom, freelook: false };
 
                 // Player (start in center of world, not at edge)
                 const player = { x: 128, y: 128, width: 16, height: 16, speed: config.playerSpeed };
@@ -398,12 +399,28 @@
                     }
                 });
 
-                // Exponential zoom - ONLY in freelook mode
+                // Spring Zoom - Scroll Wheel
                 app.canvas.addEventListener('wheel', (e) => {
-                    if (!isAltPressed) return; // Only zoom when Alt is pressed
                     e.preventDefault();
-                    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9; // 10% change per scroll
-                    camera.zoom = Math.max(config.minZoom, Math.min(config.maxZoom, camera.zoom * zoomFactor));
+
+                    // Determine zoom direction
+                    const zoomIn = e.deltaY < 0;
+
+                    // "Mini zoom that zooms once like a magnifying glass"
+                    // Logic: If close to default, snap to magnified. If close to magnified, snap to default.
+                    // Also supports granular scrolling if user continues scrolling.
+
+                    const ZOOM_STEP = 1.0; // Zoom by 1.0 unit steps as requested ("zoom out by 1")
+                    const MIN_MAGNIFY = config.defaultZoom + ZOOM_STEP;
+
+                    if (Math.abs(e.deltaY) > 0) {
+                        // Simple Target Zoom approach for smooth "spring" feel
+                        const factor = zoomIn ? 1.2 : 0.8;
+                        camera.targetZoom *= factor;
+
+                        // Clamp target zoom
+                        camera.targetZoom = Math.max(config.minZoom, Math.min(config.maxZoom, camera.targetZoom));
+                    }
                 });
 
                 // Keyboard
@@ -653,7 +670,10 @@
                     app.ticker.add(() => {
                         const time = performance.now();
                         const dt = Math.min((time - lastTime) / 1000, 0.1);
-                        lastTime = time;
+                        // Spring Zoom Logic (Lerp towards target)
+                        // Simple spring physics: move zoom towards targetZoom
+                        const springStrength = 10.0; // Adjust for "springiness"
+                        camera.zoom += (camera.targetZoom - camera.zoom) * springStrength * dt;
 
                         // Camera movement (WASD)
                         let moveX = 0, moveY = 0;
@@ -717,7 +737,38 @@
                         if ((mouse.left || mouse.right) && isInteractable) {
                             const worldX = Math.floor((mouse.x - world.x) / camera.zoom / TILE_SIZE);
                             const worldY = Math.floor((mouse.y - world.y) / camera.zoom / TILE_SIZE);
-                            setTile(worldX, worldY, mouse.right ? 1 : 0);
+                            const val = mouse.right ? 1 : 0;
+
+                            if (mouse.lastX !== undefined && mouse.lastY !== undefined) {
+                                // Bresenham's Line Algorithm for smooth drawing
+                                let x0 = mouse.lastX;
+                                let y0 = mouse.lastY;
+                                const x1 = worldX;
+                                const y1 = worldY;
+                                const dx = Math.abs(x1 - x0);
+                                const dy = Math.abs(y1 - y0);
+                                const sx = (x0 < x1) ? 1 : -1;
+                                const sy = (y0 < y1) ? 1 : -1;
+                                let err = dx - dy;
+
+                                while (true) {
+                                    setTile(x0, y0, val);
+                                    if (x0 === x1 && y0 === y1) break;
+                                    const e2 = 2 * err;
+                                    if (e2 > -dy) { err -= dy; x0 += sx; }
+                                    if (e2 < dx) { err += dx; y0 += sy; }
+                                }
+                            } else {
+                                setTile(worldX, worldY, val);
+                            }
+
+                            // Update last position
+                            mouse.lastX = worldX;
+                            mouse.lastY = worldY;
+                        } else {
+                            // Reset last position if not clicking
+                            mouse.lastX = undefined;
+                            mouse.lastY = undefined;
                         }
 
                         // Hide selection sprite in freelook mode
@@ -863,7 +914,7 @@
                         const viewHalfH = (app.screen.height / camera.zoom) / 2;
 
                         // Convert to chunk coordinates - limit to render distance from config
-                        const maxRenderDist = Math.min(config.renderDistance, 10); // Cap at 10 for performance
+                        const maxRenderDist = Math.min(config.renderDistance, 32); // Increased cap for Infinite World feel
 
                         // Calculate viewport-based chunk range
                         let startChunkX = Math.floor((camera.x - viewHalfW) / (TILE_SIZE * CHUNK_SIZE)) - 1;
@@ -925,7 +976,7 @@
                         const fps = Math.round(app.ticker.FPS);
                         const activeChunks = chunkContainers.size;
                         const cachedChunks = chunks.size;
-                        document.getElementById('info').textContent = `FPS: ${fps} | Loc: ${Math.floor(player.x)},${Math.floor(player.y)} | Zoom: ${camera.zoom.toFixed(2)}x | Rendered: ${activeChunks} | Cached: ${cachedChunks}`;
+                        document.getElementById('info').textContent = `FPS: ${fps} | x: ${Math.floor(player.x)} y: ${Math.floor(player.y)} | Zoom: ${camera.zoom.toFixed(2)}x | Rendered: ${activeChunks} | Cached: ${cachedChunks}`;
                     }
 
                     // Render overlays (grid, highlights, etc) - called after chunk rendering

@@ -7,7 +7,7 @@ A 2D survival game built with PixiJS.
 - **Dual-Grid Rendering**: Smooth terrain transitions (grass edges) using a logic/visual grid offset system.
 - **LOD System**: High performance rendering with specialized low-detail view for distant chunks.
 - **Mining & Building**: Left click to break blocks, right click to place blocks.
-- **Freelook Mode**: Hold Alt to look around without moving.
+- **Freelook Mode**: Toggle alt to look around without moving.
 
 ## Controls
 - **WASD**: Move

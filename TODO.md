@@ -8,12 +8,12 @@ the whole game is a pixel game with some lighting effects. would be between a 3d
 
 ## 🔮 Future Features
 - [x] **Custom Cursor**: Add custom cursor. and crosshair in the center of the screen. (Implemented)
-- [ ] **Spring Zoom**: Mini zoom in normal mode that zooms in/out like a spring (magnifying glass effect). Accessed by scroll wheel.
+- [x] **Spring Zoom**: Mini zoom in normal mode that zooms in/out like a spring (magnifying glass effect). Accessed by scroll wheel. (Implemented)
 - [ ] **UI System**: Hotbar, Settings, Inventory. Special 9-slice frame with blurred background.
-- [ ] **Smooth Interaction**: Better dragging/continuous mining.
-- [ ] **UI System**: Hotbar, Settings, Inventory. its a special frame. you enter a hieght width and location ect. and then it renders a frame with the inside of the frame blurred and the outside having a special frame. the corners of the frame should not change size. the image that would be givin would contain the corners and the side of the frame. the inside of the frame would be a blur effect. 
+- [x] **Smooth Interaction**: Better dragging/continuous mining. (Implemented via Bresenham's)
+- [ ] **UI System**: Hotbar, Settings, Inventory. Special 9-slice frame with blurred background.
 - [ ] **Height System**: Add terrain depth/elevation.
-- [ ] **Performance**: Optimize chunk updates (partial updates instead of full rebuild).
+- [x] **Performance**: Optimize chunk updates (Partial updates to fix Mining Lag).
 - add a mini zoom in normal mode that zooms like a spring like a maginifying glass but only zooms once its like the magnifying glass in mincraft but can also zoom out by 1. accessed by scroll wheel.
--later we have coill visuals like shaders and stuf i ccould fill the epty/ boring parts of a block with redscreen and load flowers and stuf on it later
-make render distance much more no black area when in alt mode. make world infinite and pregenrate more(;like a miliion :D)
+-later we have cool visuals like shaders and stuf i ccould fill the epty/ boring parts of a block with redscreen and load flowers and stuf on it later
+make render distance much more no black area when in alt mode. make world infinite and pregenrate more(like a miliion :D)
