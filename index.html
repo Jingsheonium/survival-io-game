@@ -743,9 +743,30 @@
 
                         // LOD: If zoomed out below threshold, render as solid color rectangles
                         if (camera.zoom < config.lodThreshold) {
+                            // Calculate grass/dirt ratio for this chunk
+                            let grassCount = 0;
+                            for (let ty = 0; ty < CHUNK_SIZE; ty++) {
+                                for (let tx = 0; tx < CHUNK_SIZE; tx++) {
+                                    if (chunk[ty][tx] === 1) grassCount++;
+                                }
+                            }
+                            const grassRatio = grassCount / (CHUNK_SIZE * CHUNK_SIZE);
+
+                            // Blend colors based on ratio
+                            const dirtR = (avgDirtColor >> 16) & 0xFF;
+                            const dirtG = (avgDirtColor >> 8) & 0xFF;
+                            const dirtB = avgDirtColor & 0xFF;
+                            const grassR = (avgGrassColor >> 16) & 0xFF;
+                            const grassG = (avgGrassColor >> 8) & 0xFF;
+                            const grassB = avgGrassColor & 0xFF;
+                            const blendR = Math.floor(dirtR * (1 - grassRatio) + grassR * grassRatio);
+                            const blendG = Math.floor(dirtG * (1 - grassRatio) + grassG * grassRatio);
+                            const blendB = Math.floor(dirtB * (1 - grassRatio) + grassB * grassRatio);
+                            const blendColor = (blendR << 16) | (blendG << 8) | blendB;
+
                             // LOD Optimization: Draw one single rectangle for the whole chunk
                             const graphics = new PIXI.Graphics();
-                            graphics.beginFill(avgGrassColor);
+                            graphics.beginFill(blendColor);
                             graphics.drawRect(cx * CHUNK_SIZE * TILE_SIZE, cy * CHUNK_SIZE * TILE_SIZE, CHUNK_SIZE * TILE_SIZE, CHUNK_SIZE * TILE_SIZE);
                             graphics.endFill();
                             container.addChild(graphics);
@@ -800,6 +821,9 @@
                     }
 
                     function render() {
+                        // Reset chunk count each frame
+                        chunksRendered = 0;
+
                         // Check if we crossed LOD threshold
                         const currentLODState = camera.zoom < config.lodThreshold;
                         if (lastLODState !== currentLODState) {
@@ -820,16 +844,22 @@
                         const viewHalfW = (app.screen.width / camera.zoom) / 2;
                         const viewHalfH = (app.screen.height / camera.zoom) / 2;
 
-                        // Convert to chunk coordinates with buffer
-                        const buffer = 2; // Extra chunks around view to prevent popping
+                        // Convert to chunk coordinates - limit to render distance from config
+                        const maxRenderDist = Math.min(config.renderDistance, 10); // Cap at 10 for performance
 
-                        // We strictly calculate what is ON SCREEN. 
-                        // The user's renderDistance (81) is huge, so we cannot use it for rendering Sprites.
+                        // Calculate viewport-based chunk range
+                        let startChunkX = Math.floor((camera.x - viewHalfW) / (TILE_SIZE * CHUNK_SIZE)) - 1;
+                        let endChunkX = Math.ceil((camera.x + viewHalfW) / (TILE_SIZE * CHUNK_SIZE)) + 1;
+                        let startChunkY = Math.floor((camera.y - viewHalfH) / (TILE_SIZE * CHUNK_SIZE)) - 1;
+                        let endChunkY = Math.ceil((camera.y + viewHalfH) / (TILE_SIZE * CHUNK_SIZE)) + 1;
 
-                        const startChunkX = Math.floor((camera.x - viewHalfW) / (TILE_SIZE * CHUNK_SIZE)) - buffer;
-                        const endChunkX = Math.ceil((camera.x + viewHalfW) / (TILE_SIZE * CHUNK_SIZE)) + buffer;
-                        const startChunkY = Math.floor((camera.y - viewHalfH) / (TILE_SIZE * CHUNK_SIZE)) - buffer;
-                        const endChunkY = Math.ceil((camera.y + viewHalfH) / (TILE_SIZE * CHUNK_SIZE)) + buffer;
+                        // Also limit by render distance from player chunk
+                        const playerChunkXCenter = Math.floor(player.x / TILE_SIZE / CHUNK_SIZE);
+                        const playerChunkYCenter = Math.floor(player.y / TILE_SIZE / CHUNK_SIZE);
+                        startChunkX = Math.max(startChunkX, playerChunkXCenter - maxRenderDist);
+                        endChunkX = Math.min(endChunkX, playerChunkXCenter + maxRenderDist);
+                        startChunkY = Math.max(startChunkY, playerChunkYCenter - maxRenderDist);
+                        endChunkY = Math.min(endChunkY, playerChunkYCenter + maxRenderDist);
 
                         // Determine which chunks should be visible
                         const chunksToRender = new Set();
@@ -864,13 +894,14 @@
                                 // If we hit limit, we just stop creating for this frame. 
                                 // They will be picked up next frame.
                             }
-                            chunksRendered++; // Maintain stat count
+                            chunksRendered++;
                         }
 
-                        // Update stats with chunk count
+                        // Update stats with active chunk count (rendered containers)
                         const fps = Math.round(app.ticker.FPS);
-                        const texInfo = `G:${grassTex?.width}x${grassTex?.height} D:${dirtTex?.width}x${dirtTex?.height}`;
-                        document.getElementById('info').textContent = `FPS: ${fps} | Loc: ${Math.floor(player.x)},${Math.floor(player.y)} | Zoom: ${camera.zoom.toFixed(2)}x | Chunks: ${chunksRendered} | ${texInfo}`;
+                        const activeChunks = chunkContainers.size;
+                        const cachedChunks = chunks.size;
+                        document.getElementById('info').textContent = `FPS: ${fps} | Loc: ${Math.floor(player.x)},${Math.floor(player.y)} | Zoom: ${camera.zoom.toFixed(2)}x | Rendered: ${activeChunks} | Cached: ${cachedChunks}`;
                     }
 
                     // Render overlays (grid, highlights, etc) - called after chunk rendering
