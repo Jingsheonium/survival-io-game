@@ -6,123 +6,138 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UI System Prototype</title>
     <style>
+        :root {
+            --border-size: 24px;
+            /* Must match border-image-width */
+            --corner-radius: 12px;
+            /* Approximate inner curve if needed */
+        }
+
         body {
-            background-color: #333;
-            /* Dark background to see the UI clearly */
-            background-image: linear-gradient(45deg, #444 25%, transparent 25%),
-                linear-gradient(-45deg, #444 25%, transparent 25%),
-                linear-gradient(45deg, transparent 75%, #444 75%),
-                linear-gradient(-45deg, transparent 75%, #444 75%);
+            background-color: #222;
+            /* Pixel Noise Background to test Blur */
+            background-image:
+                linear-gradient(45deg, #333 25%, transparent 25%),
+                linear-gradient(-45deg, #333 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #333 75%),
+                linear-gradient(-45deg, transparent 75%, #333 75%);
             background-size: 20px 20px;
-            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        /* 
-           The 9-Slice Frame Container 
-           This element will have the border-image and the blur effect.
-        */
-        .ui-frame {
+            /* Add some colored noise dots */
             position: relative;
-
-            /* Dimensions (can be dynamic) */
-            width: 400px;
-            height: 300px;
-
-            /* 
-               9-Slice Border Configuration 
-               Replace 'url(...)' with your actual frame image.
-               'slice' values (fill 10) depend on the image corner size.
-            */
-            border: 24px solid transparent;
-            /* Width of the border */
-            border-image-source: url('Assets/Image/ui_frame_placeholder.png');
-            /* Placeholder */
-            border-image-slice: 8 fill;
-            /* 8px corners, 'fill' keeps the center */
-            border-image-width: 24px;
-            border-image-repeat: stretch;
-            /* 'stretch' or 'round' or 'repeat' */
-
-            /* Typography */
-            color: white;
-            padding: 20px;
-            box-sizing: border-box;
-            /* Include padding/border in width/height */
         }
 
-        /* 
-           Frosted Glass Effect (The "Blur" inside)
-           Note: border-image 'fill' might cover this if the center isn't transparent.
-           If the center of the image is transparent, we can add a background here.
-        */
-        .ui-content {
+        /* Pseudo-element for extra colorful noise */
+        body::before {
+            content: "";
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-
-            /* The Blur Magic */
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
-
-            /* Semi-transparent background tint */
-            background-color: rgba(0, 0, 0, 0.5);
-
-            /* Ensure text is above */
+            background-image: radial-gradient(#ff0000 10%, transparent 10%),
+                radial-gradient(#00ff00 10%, transparent 10%),
+                radial-gradient(#0000ff 10%, transparent 10%);
+            background-size: 50px 50px;
+            background-position: 0 0, 15px 15px, 30px 30px;
+            pointer-events: none;
             z-index: -1;
+            opacity: 0.5;
         }
 
-        /* Content layout inside the frame */
+        /* 
+           The Container controls the size and holds the border-image.
+           It does NOT have the blur itself, to avoid blurring outside the border.
+        */
+        .ui-frame {
+            position: relative;
+            width: 400px;
+            height: 300px;
+
+            /* The 9-Slice Border */
+            border: var(--border-size) solid transparent;
+            border-image-source: url('Assets/Image/ui_frame_placeholder.png');
+            /* JS replaces this */
+            border-image-slice: 8 fill;
+            /* 'fill' is crucial to draw the center */
+            border-image-width: var(--border-size);
+            border-image-repeat: stretch;
+
+            padding: 20px;
+            box-sizing: border-box;
+            color: white;
+
+            /* No overflow hidden, otherwise border might get clipped */
+        }
+
+        /* 
+           The Blur Zone
+           Positioned ABSOLUTELY to match the 'Red Area' (Content Box).
+           We use negative inset to pull it to the edge of the padding box/border box?
+           Actually, border-image paints in the BORDER area.
+           The content box is inside.
+           If we want to blur exactly where the red center was (which replaced the content area + border center):
+           We should position this to cover the background of the element.
+        */
+        .ui-blur-zone {
+            position: absolute;
+            /* Inset 0 relative to the padding-box (inside the border) */
+            /* But borders are transparent in 8-slice logic? No, they take space. */
+            /* We want to blur the "Inner" area. */
+            /* If the border is 24px, we inset by -something? or just fill? */
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+
+            /* Use z-index -1 to sit behind text but on top of 'border-image fill' (if fill was separate) */
+            /* Wait, border-image 'fill' is drawn BENEATH content. */
+            /* So we need this blur layer to be *behind* text. */
+            z-index: -1;
+
+            /* The Blur Effect */
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            background-color: rgba(0, 0, 0, 0.3);
+            /* Slight tint */
+
+            /* Optional: Match rounded corners of the red area if implied */
+            border-radius: var(--corner-radius);
+        }
+
         .ui-inner {
             position: relative;
             z-index: 1;
+            /* Above blur */
             height: 100%;
             display: flex;
             flex-direction: column;
         }
 
+        /* Text Styles */
         h2 {
-            margin-top: 0;
-            text-align: center;
-            text-transform: uppercase;
-            letter-spacing: 2px;
             border-bottom: 2px solid rgba(255, 255, 255, 0.2);
             padding-bottom: 10px;
-        }
-
-        p {
-            line-height: 1.5;
+            margin-top: 0;
+            text-align: center;
         }
 
         .btn {
-            background: #555;
-            border: 2px solid #777;
-            color: white;
-            padding: 10px;
-            cursor: pointer;
             margin-top: auto;
-            font-weight: bold;
-            transition: background 0.2s;
+            padding: 10px;
+            background: #555;
+            border: 2px solid #fff;
+            cursor: pointer;
+            color: white;
+            transition: 0.2s;
         }
 
         .btn:hover {
             background: #777;
         }
 
-        /* Placeholder image generation (for testing only, remove when real image exists) */
-        /* This is just so you see SOMETHING if the image is missing */
         .ui-frame.placeholder-mode {
             border: 4px solid #888;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-            border-radius: 8px;
-            /* Rounded corners if not using 9-slice */
+            border-image: none;
         }
     </style>
 </head>
@@ -131,8 +146,11 @@
 
     <!-- UI Component Example -->
     <div class="ui-frame" id="testFrame">
-        <!-- Background Blur Layer -->
-        <div class="ui-content"></div>
+        <!-- Constrained Blur Layer -->
+        <!-- This sits inside the element (padding box). 
+             Since border is 24px and box-sizing is border-box, this fills the 352x252 inner area.
+             This matches the "Center" of the 9-slice. -->
+        <div class="ui-blur-zone"></div>
 
         <!-- Actual UI Elements -->
         <div class="ui-inner">
@@ -140,7 +158,6 @@
             <p>Item: <strong>Lazor Pickaxe</strong></p>
             <p>Durability: 9000/9001</p>
             <p><i>"A shiny tool for a shiny person."</i></p>
-
             <button class="btn">Close</button>
         </div>
     </div>

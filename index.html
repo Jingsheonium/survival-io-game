@@ -195,6 +195,7 @@
 
                 // Mark chunk for re-render (Batching)
                 // We don't render immediately anymore to prevent lag from multiple updates (dragging)
+                const key = `${cx},${cy}`;
                 dirtyChunks.add(key);
             }
 
