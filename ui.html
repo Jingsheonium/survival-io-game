@@ -49,23 +49,25 @@
            The Container controls the size and holds the border-image.
            It does NOT have the blur itself, to avoid blurring outside the border.
         */
+        /* 
+           The Container controls the size and holds the border-image.
+           It does NOT have the blur itself, to avoid blurring outside the border.
+        */
         .ui-frame {
             position: absolute;
             /* Changed to absolute for dragging */
-            /* Center initially */
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            /* Start at a fixed position to avoid translate jumping */
+            top: 100px;
+            left: 100px;
 
             width: 400px;
             height: 300px;
 
             /* The 9-Slice Border */
             border: var(--border-size) solid transparent;
-            border-image-source: url('Assets/Image/ui_frame_placeholder.png');
-            /* JS replaces this */
+            /* Default to the USER'S image (even with red pixels) so they know it loaded */
+            border-image-source: url('Assets/Image/frame.png');
             border-image-slice: 16 fill;
-            /* 'fill' is crucial to draw the center */
             border-image-width: var(--border-size);
             border-image-repeat: stretch;
 
@@ -78,10 +80,10 @@
             /* Prevent text selection while dragging */
         }
 
-        /*
+        /* 
            The Blur Zone
            Now uses CSS MASKS to restrict the blur to exactly the shape of the "Red Area".
-           We use 'mask-border' (or -webkit-mask-box-image) to 9-slice the mask
+           We use 'mask-border' (or -webkit-mask-box-image) to 9-slice the mask 
            just like the frame border-image.
         */
         .ui-blur-zone {
@@ -98,17 +100,17 @@
             /* The Blur Effect */
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            background-color: rgba(0, 0, 0, 0.3);
+            /* background-color: rgba(0, 0, 0, 0.3); REMOVED TINT */
 
             /* The Mask Logic (9-Slice Mask) */
             /* We start with placeholder, JS upgrades it to the generated mask */
-            -webkit-mask-box-image-source: url('Assets/Image/ui_frame_placeholder.png');
+            -webkit-mask-box-image-source: url('Assets/Image/frame.png');
             -webkit-mask-box-image-slice: 16 fill;
             -webkit-mask-box-image-width: var(--border-size);
             -webkit-mask-box-image-repeat: stretch;
 
             /* Standard property */
-            mask-border-source: url('Assets/Image/ui_frame_placeholder.png');
+            mask-border-source: url('Assets/Image/frame.png');
             mask-border-slice: 16 fill;
             mask-border-width: var(--border-size);
             mask-border-repeat: stretch;
