@@ -175,6 +175,15 @@
                         }
                     }
                     chunks.set(key, chunk);
+
+                    // FIX: Dirty neighbors to ensure smooth edges (Dual Grid)
+                    // When a new chunk appears, neighbors need to redraw to connect to it
+                    if (typeof dirtyChunks !== 'undefined') {
+                        dirtyChunks.add(`${cx - 1},${cy}`);
+                        dirtyChunks.add(`${cx + 1},${cy}`);
+                        dirtyChunks.add(`${cx},${cy - 1}`);
+                        dirtyChunks.add(`${cx},${cy + 1}`);
+                    }
                 }
                 return chunks.get(key);
             }
@@ -581,19 +590,22 @@
                     });
 
                     // Mouse move handler - just track position
-                    // Mouse move handler - Direct & Unthrottled (User requested "complexity is n(o)")
+                    // Mouse move handler - Extremely Lightweight (Just updates data)
                     window.addEventListener('mousemove', (e) => {
                         mouse.x = e.clientX;
                         mouse.y = e.clientY;
+                    });
 
-                        // 1. Direct Visual Cursor Update (Restored & Decoupled)
+                    // Independent Cursor Loop - Synced to Monitor Refresh Rate (visuals only)
+                    // This solves the high-polling mouse lag by updating only when the screen can actually draw.
+                    const updateCursorVisuals = () => {
+                        // 1. Update Cursor Sprite
                         if (cursorSprite) {
-                            cursorSprite.x = e.clientX;
-                            cursorSprite.y = e.clientY;
+                            cursorSprite.x = mouse.x;
+                            cursorSprite.y = mouse.y;
                         }
 
-                        // 2. Direct World Highlight Update (Decoupled from Game Loop)
-                        // Calculate world coordinates immediately for instant feedback
+                        // 2. Update World Highlight
                         if (world.scale.x !== 0) {
                             const worldX = (mouse.x - world.x) / world.scale.x;
                             const worldY = (mouse.y - world.y) / world.scale.y;
@@ -601,13 +613,15 @@
                             hoveredTileX = Math.floor(worldX / TILE_SIZE);
                             hoveredTileY = Math.floor(worldY / TILE_SIZE);
 
-                            // Update highlight sprite instantly
                             if (selectSprite) {
                                 selectSprite.x = hoveredTileX * TILE_SIZE;
                                 selectSprite.y = hoveredTileY * TILE_SIZE;
                             }
                         }
-                    });
+                        requestAnimationFrame(updateCursorVisuals);
+                    };
+                    // Start the cursor loop
+                    requestAnimationFrame(updateCursorVisuals);
 
                     // Mouse down - change to pressed texture
                     window.addEventListener('mousedown', (e) => {
