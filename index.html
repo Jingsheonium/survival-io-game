@@ -563,9 +563,10 @@
                     crosshairSprite.zIndex = 9999; // Super high z-index (Above world)
                     app.stage.addChild(crosshairSprite);
 
-                    // Setup Software Cursor (for scaling)
-                    // We load the cursor image as a sprite so we can scale it up
-                    // Setup Software Cursor (for scaling)
+                    // Setup Cursor: Restored Custom Sprite (Decoupled for performance)
+                    // Hiding system cursor
+                    app.canvas.style.cursor = 'none';
+
                     let cursorSprite = null; // Declare here so game loop can see it
                     PIXI.Assets.load('Assets/Image/cursor.png').then((cursorTex) => {
                         cursorTex.source.scaleMode = 'nearest';
@@ -579,16 +580,33 @@
                         app.canvas.style.cursor = 'auto'; // Fallback
                     });
 
-                    // Mouse move handler - just track position, logic is in main loop
-                    // Mouse move handler - update input state AND visual cursor directly
+                    // Mouse move handler - just track position
                     window.addEventListener('mousemove', (e) => {
                         mouse.x = e.clientX;
                         mouse.y = e.clientY;
 
-                        // Direct visual update (Lag-Free Cursor)
+                        // 1. Direct Visual Cursor Update (Restored & Decoupled)
                         if (cursorSprite) {
                             cursorSprite.x = e.clientX;
                             cursorSprite.y = e.clientY;
+                        }
+
+                        // 2. Direct World Highlight Update (Decoupled from Game Loop)
+                        // Calculate world coordinates immediately for instant feedback
+                        if (world.scale.x !== 0) {
+                            const worldX = (mouse.x - world.x) / world.scale.x;
+                            const worldY = (mouse.y - world.y) / world.scale.y;
+
+                            hoveredTileX = Math.floor(worldX / TILE_SIZE);
+                            hoveredTileY = Math.floor(worldY / TILE_SIZE);
+
+                            // Update highlight sprite instantly
+                            if (selectSprite) {
+                                selectSprite.x = hoveredTileX * TILE_SIZE;
+                                selectSprite.y = hoveredTileY * TILE_SIZE;
+                                // Ensure visibility logic is also synced or kept in loop (loop manages visibility better based on interactability)
+                                // But we can force position here.
+                            }
                         }
                     });
 
