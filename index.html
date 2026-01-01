@@ -581,6 +581,7 @@
                     });
 
                     // Mouse move handler - just track position
+                    // Mouse move handler - Direct & Unthrottled (User requested "complexity is n(o)")
                     window.addEventListener('mousemove', (e) => {
                         mouse.x = e.clientX;
                         mouse.y = e.clientY;
@@ -604,8 +605,6 @@
                             if (selectSprite) {
                                 selectSprite.x = hoveredTileX * TILE_SIZE;
                                 selectSprite.y = hoveredTileY * TILE_SIZE;
-                                // Ensure visibility logic is also synced or kept in loop (loop manages visibility better based on interactability)
-                                // But we can force position here.
                             }
                         }
                     });
