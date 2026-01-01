@@ -100,7 +100,8 @@
 
             // World container
             const world = new PIXI.Container();
-            world.sortableChildren = true; // Enable z-index sorting
+            world.sortableChildren = true; // Enable z-index sorting for world (tiles/players)
+            app.stage.sortableChildren = true; // Enable z-index sorting for stage (UI/Crosshair)
             app.stage.addChild(world);
 
             // Layers for Z-sorting (Fixes "cutoff" grass/half tiles)
@@ -359,7 +360,7 @@
                 app.canvas.addEventListener('mouseup', () => {
                     if (isDragging) {
                         isDragging = false;
-                        app.canvas.style.cursor = isAltPressed ? 'grab' : 'crosshair';
+                        app.canvas.style.cursor = isAltPressed ? 'grab' : "url('Assets/Image/cursor.png'), auto";
                     }
                 });
 
@@ -426,7 +427,7 @@
                             camera.x = player.x + player.width / 2;
                             camera.y = player.y + player.height / 2;
                             camera.zoom = config.defaultZoom; // Reset to default zoom (2.0)
-                            app.canvas.style.cursor = 'crosshair';
+                            app.canvas.style.cursor = "url('Assets/Image/cursor.png'), auto";
                         }
                         e.preventDefault();
                     }
@@ -513,19 +514,28 @@
                         const canvas = document.createElement('canvas');
                         canvas.width = 32; canvas.height = 16;
                         const ctx = canvas.getContext('2d');
-                        ctx.strokeStyle = '#FFFF00'; ctx.lineWidth = 2; ctx.strokeRect(0, 0, 16, 16); // Normal
                         ctx.strokeStyle = '#FF0000'; ctx.lineWidth = 2; ctx.strokeRect(16, 0, 16, 16); // Pressed
                         return PIXI.Texture.from(canvas);
+                    }),
+                    PIXI.Assets.load('Assets/Image/crosshair.png').catch(() => {
+                        console.warn('crosshair.png not found, using placeholder');
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 16; canvas.height = 16;
+                        const ctx = canvas.getContext('2d');
+                        ctx.fillStyle = '#FFFFFF'; ctx.fillRect(7, 0, 2, 16); ctx.fillRect(0, 7, 16, 2);
+                        return PIXI.Texture.from(canvas);
                     })
-                ]).then(([dirtTexLoaded, grassTexLoaded, selectTexLoaded]) => {
+                ]).then(([dirtTexLoaded, grassTexLoaded, selectTexLoaded, crosshairTexLoaded]) => {
                     // Update global references and set nearest neighbor scaling (Pixel Art)
                     dirtTexLoaded.source.scaleMode = 'nearest';
                     grassTexLoaded.source.scaleMode = 'nearest';
                     selectTexLoaded.source.scaleMode = 'nearest';
+                    crosshairTexLoaded.source.scaleMode = 'nearest';
 
                     const dirtTex = dirtTexLoaded;
                     const grassTex = grassTexLoaded;
                     const selectTex = selectTexLoaded;
+                    const crosshairTex = crosshairTexLoaded;
 
                     // Setup Block Highlight (using loaded texture)
                     // Assumes horizontal sprite sheet (32x16)
@@ -548,7 +558,7 @@
                     // Setup Crosshair Sprite (One-time creation)
                     const crosshairSprite = new PIXI.Sprite(crosshairTex);
                     crosshairSprite.anchor.set(0.5);
-                    crosshairSprite.zIndex = 2000; // Super high z-index
+                    crosshairSprite.zIndex = 9999; // Super high z-index (Above world)
                     app.stage.addChild(crosshairSprite);
 
                     // Mouse move handler - just track position, logic is in main loop
@@ -757,8 +767,7 @@
                         if (crosshairSprite) {
                             crosshairSprite.x = app.screen.width / 2;
                             crosshairSprite.y = app.screen.height / 2;
-                            // Ensure it's always on top
-                            app.stage.setChildIndex(crosshairSprite, app.stage.children.length - 1);
+                            // zIndex handled by sortableChildren now
                         }
                     });
 
