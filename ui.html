@@ -204,24 +204,23 @@
             isDragging = true;
             // Calculate offset from the element's top-left
             const rect = uiFrame.getBoundingClientRect();
-            // Round offset to prevent initial jump
-            dragOffsetX = Math.floor(e.clientX - rect.left);
-            dragOffsetY = Math.floor(e.clientY - rect.top);
+            // Reverted rounding for smooth drag
+            dragOffsetX = e.clientX - rect.left;
+            dragOffsetY = e.clientY - rect.top;
 
             // Remove transform centering once we start moving manually
             uiFrame.style.transform = 'none';
-            // Snap to grid immediately
-            uiFrame.style.left = Math.floor(rect.left) + 'px';
-            uiFrame.style.top = Math.floor(rect.top) + 'px';
+            uiFrame.style.left = rect.left + 'px';
+            uiFrame.style.top = rect.top + 'px';
             uiFrame.style.bottom = 'auto';
             uiFrame.style.right = 'auto';
         });
 
         window.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
-            // Snap to integer pixels to prevent "Boiling" / Shimmering
-            uiFrame.style.left = Math.floor(e.clientX - dragOffsetX) + 'px';
-            uiFrame.style.top = Math.floor(e.clientY - dragOffsetY) + 'px';
+            // Reverted rounding
+            uiFrame.style.left = (e.clientX - dragOffsetX) + 'px';
+            uiFrame.style.top = (e.clientY - dragOffsetY) + 'px';
         });
 
         window.addEventListener('mouseup', () => {

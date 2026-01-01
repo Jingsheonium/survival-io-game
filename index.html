@@ -783,10 +783,10 @@
 
 
                         // Transform world (camera system - center camera position on screen)
-                        // Round to whole pixels to prevent "boiling" effect
+                        // Reverted rounding to fix diagonal movement feel
                         world.scale.set(camera.zoom);
-                        world.x = Math.floor(-camera.x * camera.zoom + app.screen.width / 2);
-                        world.y = Math.floor(-camera.y * camera.zoom + app.screen.height / 2);
+                        world.x = -camera.x * camera.zoom + app.screen.width / 2;
+                        world.y = -camera.y * camera.zoom + app.screen.height / 2;
 
                         // Crosshair Position Update (Screen Space)
                         if (crosshairSprite) {
@@ -877,11 +877,12 @@
                                 chunkDirt.addChild(dirtSprite);
 
                                 // Grass tile -> Grass Layer
-                                // Use getTileSafe to avoid forcing neighbors to generate (Lag Fix)
-                                const hasGrass = getTileSafe(worldX, worldY) === 1 ||
-                                    getTileSafe(worldX + 1, worldY) === 1 ||
-                                    getTileSafe(worldX, worldY + 1) === 1 ||
-                                    getTileSafe(worldX + 1, worldY + 1) === 1;
+                                // Reverted to getTile to fix "Half Blocks" / Cutoff edges
+                                // The lag was likely the Debug Grid, so generating 16x16 arrays is fine.
+                                const hasGrass = getTile(worldX, worldY) === 1 ||
+                                    getTile(worldX + 1, worldY) === 1 ||
+                                    getTile(worldX, worldY + 1) === 1 ||
+                                    getTile(worldX + 1, worldY + 1) === 1;
 
                                 if (hasGrass) {
                                     const grassIdx = getGrassIdx(worldX, worldY);
