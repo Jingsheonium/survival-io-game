@@ -576,9 +576,16 @@
                     });
 
                     // Mouse move handler - just track position, logic is in main loop
+                    // Mouse move handler - update input state AND visual cursor directly
                     window.addEventListener('mousemove', (e) => {
                         mouse.x = e.clientX;
                         mouse.y = e.clientY;
+
+                        // Direct visual update (Lag-Free Cursor)
+                        if (cursorSprite) {
+                            cursorSprite.x = e.clientX;
+                            cursorSprite.y = e.clientY;
+                        }
                     });
 
                     // Mouse down - change to pressed texture
@@ -783,12 +790,8 @@
                             crosshairSprite.y = app.screen.height / 2;
                         }
 
-                        // Cursor Position Update (Software Cursor)
-                        if (cursorSprite) {
-                            cursorSprite.x = mouse.x;
-                            cursorSprite.y = mouse.y;
-                            // Hide real cursor if we drifted out? CSS handles 'none'
-                        }
+                        // Cursor is now updated in 'mousemove' listener for zero latency.
+                        // Removed game loop update to prevent fighting/jitter.
 
                         // Process Dirty Chunks (Batch Rendering)
                         if (dirtyChunks.size > 0 && renderChunk) {
