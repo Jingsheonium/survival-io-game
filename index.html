@@ -184,6 +184,19 @@
                 return chunk[ty][tx];
             }
 
+            // Helper: Get Tile without forcing chunk generation (prevents render lag)
+            function getTileSafe(x, y) {
+                const cx = Math.floor(x / CHUNK_SIZE);
+                const cy = Math.floor(y / CHUNK_SIZE);
+                const key = `${cx},${cy}`;
+                // If chunk doesn't exist, don't generate it. Just return 0 (dirt).
+                if (!chunks.has(key)) return 0;
+
+                const tx = ((x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+                const ty = ((y % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+                return chunks.get(key)[ty][tx];
+            }
+
             function setTile(x, y, value) {
                 const cx = Math.floor(x / CHUNK_SIZE);
                 const cy = Math.floor(y / CHUNK_SIZE);
@@ -555,7 +568,7 @@
                         cursorSprite = new PIXI.Sprite(cursorTex);
                         cursorSprite.scale.set(2);
                         cursorSprite.zIndex = 10000;
-                        cursorSprite.anchor.set(0, 0);
+                        cursorSprite.anchor.set(0.5); // Center the cursor on the mouse point
                         app.stage.addChild(cursorSprite);
                     }).catch(() => {
                         console.warn("Cursor image failed to load, falling back to system cursor");
@@ -857,10 +870,11 @@
                                 chunkDirt.addChild(dirtSprite);
 
                                 // Grass tile -> Grass Layer
-                                const hasGrass = getTile(worldX, worldY) === 1 ||
-                                    getTile(worldX + 1, worldY) === 1 ||
-                                    getTile(worldX, worldY + 1) === 1 ||
-                                    getTile(worldX + 1, worldY + 1) === 1;
+                                // Use getTileSafe to avoid forcing neighbors to generate (Lag Fix)
+                                const hasGrass = getTileSafe(worldX, worldY) === 1 ||
+                                    getTileSafe(worldX + 1, worldY) === 1 ||
+                                    getTileSafe(worldX, worldY + 1) === 1 ||
+                                    getTileSafe(worldX + 1, worldY + 1) === 1;
 
                                 if (hasGrass) {
                                     const grassIdx = getGrassIdx(worldX, worldY);

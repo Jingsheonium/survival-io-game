@@ -233,29 +233,42 @@
         img.crossOrigin = "Anonymous";
 
         img.onload = function () {
-            const w = img.width;
-            const h = img.height;
-
-            // Canvas 1: The Visual Frame (Red Removed)
-            const canvasFrame = document.createElement('canvas');
-            canvasFrame.width = w; canvasFrame.height = h;
-            const ctxFrame = canvasFrame.getContext('2d');
-            ctxFrame.drawImage(img, 0, 0);
-
-            // Canvas 2: The Blur Mask (Only Red Exists)
-            const canvasMask = document.createElement('canvas');
-            canvasMask.width = w; canvasMask.height = h;
-            const ctxMask = canvasMask.getContext('2d');
-            // Init with transparent
-            const maskData = ctxMask.createImageData(w, h);
-            const mData = maskData.data;
-
             try {
+                const w = img.width;
+                const h = img.height;
+                const warnBanner = document.getElementById('warnBanner');
+                warnBanner.style.display = 'none'; // Hide if successful so far
+
+                // --- 1. Dynamic Slice Calculation ---
+                // Default 1/3 of image size to handle small pixel art
+                let sliceSize = Math.floor(Math.min(w, h) / 3);
+                if (sliceSize < 1) sliceSize = 1;
+
+                const frameEl = document.getElementById('testFrame');
+                const blurEl = document.getElementById('blurLayer');
+
+                console.log(`UI Debug: Image ${w}x${h}, Slice: ${sliceSize}px`);
+
+                // Canvas 1: The Visual Frame (Red Removed)
+                const canvasFrame = document.createElement('canvas');
+                canvasFrame.width = w; canvasFrame.height = h;
+                const ctxFrame = canvasFrame.getContext('2d');
+                ctxFrame.drawImage(img, 0, 0);
+
+                // Canvas 2: The Blur Mask (Only Red Exists)
+                const canvasMask = document.createElement('canvas');
+                canvasMask.width = w; canvasMask.height = h;
+                const ctxMask = canvasMask.getContext('2d');
+                // Init with transparent
+                const maskData = ctxMask.createImageData(w, h);
+                const mData = maskData.data;
+
                 // Get pixel data from the drawn image
                 const frameData = ctxFrame.getImageData(0, 0, w, h);
                 const fData = frameData.data;
 
-                let hasRed = false;
+                let redCount = 0;
+                let totalCount = 0;
 
                 for (let i = 0; i < fData.length; i += 4) {
                     const r = fData[i];
@@ -263,70 +276,50 @@
                     const b = fData[i + 2];
                     const a = fData[i + 3];
 
-                    if (r > 240 && g < 10 && b < 10 && a > 0) {
-                        // FOUND RED PIXEL
-                        hasRed = true;
+                    if (a > 0) totalCount++;
 
-                        // Frame: Make Transparent
+                    // Looser Red Check (r > 200, g < 40, b < 40)
+                    if (r > 200 && g < 40 && b < 40 && a > 0) {
+                        redCount++;
+                        // FOUND RED PIXEL
+                        // Frame: Make Transparent (Hole)
                         fData[i + 3] = 0;
 
-                        // Mask: Make Opaque (Black is fine, alpha matters)
-                        mData[i] = 0; mData[i + 1] = 0; mData[i + 2] = 0; // Black
-                        mData[i + 3] = 255; // Opaque
+                        // Mask: Make Opaque (Visible Blur)
+                        mData[i] = 0; mData[i + 1] = 0; mData[i + 2] = 0;
+                        mData[i + 3] = 255;
                     } else {
-                        // NORMAL FRAME PIXEL (or transparent)
-
+                        // NORMAL FRAME PIXEL
                         // Frame: Keep as is
-
-                        // Mask: Make Transparent
+                        // Mask: Make Transparent (No Blur)
                         mData[i + 3] = 0;
                     }
                 }
 
-                if (hasRed) {
-                    console.log("Applying Red Key Shader...");
+                console.log(`UI Debug: Found ${redCount} red pixels.`);
 
-                    // 1. Apply modified frame pixels
-                    ctxFrame.putImageData(frameData, 0, 0);
-                    const finalFrameUrl = canvasFrame.toDataURL();
+                // 2. Apply modified frame pixels
+                ctxFrame.putImageData(frameData, 0, 0);
+                const finalFrameUrl = canvasFrame.toDataURL();
 
-                    // 2. Apply generated mask pixels
-                    ctxMask.putImageData(maskData, 0, 0);
-                    const finalMaskUrl = canvasMask.toDataURL();
+                // 3. Apply generated mask pixels
+                ctxMask.putImageData(maskData, 0, 0);
+                const finalMaskUrl = canvasMask.toDataURL();
 
-                    // Apply CSS
-                    const frameEl = document.getElementById('testFrame');
-                    const blurEl = document.getElementById('blurLayer');
+                // Apply CSS with dynamic slice
+                // Note: border-image-slice does NOT accept 'px' units, just raw numbers.
+                frameEl.style.borderImage = `url(${finalFrameUrl}) ${sliceSize} fill / var(--border-size) stretch`;
 
-                    // Visual Frame
-                    frameEl.style.borderImageSource = `url('${finalFrameUrl}')`;
-                    frameEl.style.borderImageSlice = '16 fill'; // 16px Slices
-                    frameEl.classList.remove('placeholder-mode');
+                // Mask needs webkit prefix
+                const maskVal = `url(${finalMaskUrl}) ${sliceSize} fill / var(--border-size) stretch`;
+                blurEl.style.webkitMaskBoxImage = maskVal;
+                blurEl.style.maskBorder = maskVal;
 
-                    // Blur Mask
-                    blurEl.style.webkitMaskBoxImageSource = `url('${finalMaskUrl}')`;
-                    blurEl.style.webkitMaskBoxImageSlice = '16 fill';
-
-                    blurEl.style.maskBorderSource = `url('${finalMaskUrl}')`;
-                    blurEl.style.maskBorderSlice = '16 fill';
-
-                } else {
-                    console.warn("No red mask found in image.");
-                    document.getElementById('testFrame').style.borderImageSource = `url('${frameUrl}')`;
-                }
-            } catch (e) {
-                console.error("CORS Error / Canvas Taint:", e);
-                // Fallback: Just show the raw image
-                const frameEl = document.getElementById('testFrame');
-                frameEl.style.borderImageSource = `url('${frameUrl}')`;
-                frameEl.classList.remove('placeholder-mode');
-
-                // Add a warning message on screen
-                const warn = document.createElement('div');
-                warn.style.position = 'fixed'; warn.style.top = '0'; warn.style.left = '0';
-                warn.style.background = 'red'; warn.style.color = 'white'; warn.style.padding = '5px';
-                warn.innerText = "Security Error: Run via Live Server to enable Red Key Shader!";
-                document.body.appendChild(warn);
+            } catch (err) {
+                console.error("UI Script Error:", err);
+                const warnBanner = document.getElementById('warnBanner');
+                warnBanner.style.display = 'block';
+                warnBanner.innerText = "Script Error: " + err.message;
             }
         };
 
