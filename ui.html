@@ -180,11 +180,9 @@
             if (e.target.tagName === 'BUTTON') return;
             e.preventDefault();
             isDragging = true;
-
             const rect = uiFrame.getBoundingClientRect();
             dragOffsetX = e.clientX - rect.left;
             dragOffsetY = e.clientY - rect.top;
-
             uiFrame.style.transform = 'none';
             uiFrame.style.left = rect.left + 'px';
             uiFrame.style.top = rect.top + 'px';
@@ -202,101 +200,75 @@
             isDragging = false;
         });
 
-        // --- Red Key Processor ---
+        // --- Simplified Red Key Logic (Clean & Minimal) ---
         const frameUrl = 'Assets/Image/frame.png';
-
         const img = new Image();
-        img.crossOrigin = "Anonymous"; // Try this, though file:// might ignore it
+        img.src = frameUrl;
 
         img.onload = function () {
-            try {
-                const w = img.width;
-                const h = img.height;
-                const warnBanner = document.getElementById('warnBanner');
-                if (warnBanner) warnBanner.style.display = 'none';
+            const w = img.width;
+            const h = img.height;
+            const sliceSize = Math.floor(Math.min(w, h) / 3);
 
-                let sliceSize = Math.floor(Math.min(w, h) / 3);
-                if (sliceSize < 1) sliceSize = 1;
+            console.log(`Processing Red Key... ${w}x${h}`);
 
-                const frameEl = document.getElementById('testFrame');
-                const blurEl = document.getElementById('blurLayer');
+            const frameEl = document.getElementById('testFrame');
+            const blurEl = document.getElementById('blurLayer');
 
-                console.log(`Processing Red Key... ${w}x${h}`);
+            // Canvas 1: Visual Frame (Red -> Transparent)
+            const cFrame = document.createElement('canvas');
+            cFrame.width = w; cFrame.height = h;
+            const ctxFrame = cFrame.getContext('2d');
+            ctxFrame.drawImage(img, 0, 0);
 
-                // Canvas 1: Visual Frame (Red -> Transparent)
-                const cFrame = document.createElement('canvas');
-                cFrame.width = w; cFrame.height = h;
-                const ctxFrame = cFrame.getContext('2d');
-                ctxFrame.drawImage(img, 0, 0);
+            // Canvas 2: Blur Mask (Red -> Opaque White, Else -> Transparent)
+            const cMask = document.createElement('canvas');
+            cMask.width = w; cMask.height = h;
+            const ctxMask = cMask.getContext('2d');
+            const maskData = ctxMask.createImageData(w, h); // Starts empty
+            const mData = maskData.data;
 
-                // Canvas 2: Blur Mask (Red -> Opaque White, Else -> Transparent)
-                const cMask = document.createElement('canvas');
-                cMask.width = w; cMask.height = h;
-                const ctxMask = cMask.getContext('2d');
-                const maskData = ctxMask.createImageData(w, h);
-                const mData = maskData.data;
+            const frameData = ctxFrame.getImageData(0, 0, w, h);
+            const fData = frameData.data;
 
-                const frameData = ctxFrame.getImageData(0, 0, w, h);
-                const fData = frameData.data;
+            for (let i = 0; i < fData.length; i += 4) {
+                const r = fData[i], g = fData[i + 1], b = fData[i + 2];
 
-                for (let i = 0; i < fData.length; i += 4) {
-                    const r = fData[i], g = fData[i + 1], b = fData[i + 2], a = fData[i + 3];
+                // Check for RED (Red > 200, others low)
+                if (r > 200 && g < 50 && b < 50) {
+                    // IT IS RED:
+                    // 1. Remove from Visual Frame (make transparent hole)
+                    fData[i + 3] = 0;
 
-                    // Check for RED (Red > 200, others low)
-                    if (r > 200 && g < 50 && b < 50 && a > 0) {
-                        // IT IS RED:
-                        // 1. Remove from Visual Frame (make transparent hole)
-                        fData[i + 3] = 0;
-
-                        // 2. Add to Blur Mask (make visible)
-                        mData[i] = mData[i + 1] = mData[i + 2] = 255;
-                        mData[i + 3] = 255;
-                    } else {
-                        // NOT RED (Border):
-                        // 1. Keep in Visual Frame (Original Color)
-                        // 2. Hide from Blur Mask
-                        mData[i + 3] = 0;
-                    }
+                    // 2. Add to Blur Mask (make visible -> Opaque White)
+                    mData[i] = 255; mData[i + 1] = 255; mData[i + 2] = 255; mData[i + 3] = 255;
                 }
-
-                // Apply changes
-                ctxFrame.putImageData(frameData, 0, 0);
-                ctxMask.putImageData(maskData, 0, 0);
-
-                const finalFrameUrl = cFrame.toDataURL();
-                const finalMaskUrl = cMask.toDataURL();
-
-                // Apply to DOM
-                frameEl.style.borderImage = `url(${finalFrameUrl}) ${sliceSize} fill / var(--border-size) stretch`;
-
-                // Enable Blur with Mask
-                blurEl.style.display = 'block';
-                // Pure Blur (Transparent fill)
-                blurEl.style.backgroundColor = 'transparent';
-                blurEl.style.backdropFilter = 'blur(10px)';
-                blurEl.style.webkitBackdropFilter = 'blur(10px)';
-
-                const maskVal = `url(${finalMaskUrl}) ${sliceSize} fill / var(--border-size) stretch`;
-                blurEl.style.webkitMaskBoxImage = maskVal;
-                blurEl.style.maskBorder = maskVal;
-
-            } catch (err) {
-                console.warn("Security/Script Error (likely file:// access):", err);
-                const warnBanner = document.getElementById('warnBanner');
-                if (warnBanner) {
-                    warnBanner.style.display = 'block';
-                    warnBanner.style.background = 'orange';
-                    warnBanner.innerText = "Local File Security Blocked Red Key. Using Fallback (Raw Image).";
-                }
-                // Fallback: Just show raw image, no blur
-                const frameEl = document.getElementById('testFrame');
-                // Default 1/3 slice (re-calc locally if scope issue, but safe here)
-                let sliceSize = Math.floor(Math.min(img.width, img.height) / 3);
-                frameEl.style.borderImage = `url(${frameUrl}) ${sliceSize} / var(--border-size) stretch`;
+                // ELSE: Border Pixel
+                // Visual Frame: Must match original pixel exactly
+                // Blur Mask: Must be Transparent
             }
+
+            // Apply changes
+            ctxFrame.putImageData(frameData, 0, 0);
+            ctxMask.putImageData(maskData, 0, 0);
+
+            // Apply to DOM
+            // FRAME: Use modified image. NO 'fill' needed.
+            frameEl.style.borderImage = `url(${cFrame.toDataURL()}) ${sliceSize} / var(--border-size) stretch`;
+
+            // MASK: Use generated mask. NEEDS 'fill' to cover the center.
+            const maskVal = `url(${cMask.toDataURL()}) ${sliceSize} fill / var(--border-size) stretch`;
+
+            blurEl.style.display = 'block';
+            blurEl.style.webkitMaskBoxImage = maskVal;
+            blurEl.style.maskBorder = maskVal;
+
+            // Pure Blur
+            blurEl.style.backgroundColor = 'transparent';
+            blurEl.style.backdropFilter = 'blur(10px)';
+            blurEl.style.webkitBackdropFilter = 'blur(10px)';
         };
     </script>
-
 </body>
 
 </html>
