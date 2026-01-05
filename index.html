@@ -55,21 +55,25 @@
         }
 
         /* Custom HTML Cursor */
+        /* Custom HTML Cursor */
         #follower-element {
-            width: 50px;
-            height: 50px;
-            background-color: red;
-            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            background-image: url('Assets/Image/cursor.png');
+            background-size: contain;
+            background-repeat: no-repeat;
             position: fixed;
             transform: translate(-50%, -50%);
+            /* Center? Usually cursors are top-left... let's keep top-left */
+            /* transform: translate(0, 0); */
             pointer-events: none;
-            transition: transform 0.1s linear;
             z-index: 10000;
-            /* Above Everything */
-            opacity: 0.8;
-            /* Slight transparency */
-            mix-blend-mode: exclusion;
-            /* Cool effect over game */
+            image-rendering: pixelated;
+        }
+
+        /* Force Hide System Cursor Globally */
+        * {
+            cursor: none !important;
         }
     </style>
 </head>
@@ -107,6 +111,7 @@
         };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/pixi.js@8.5.2/dist/pixi.min.js"></script>
+    <script src="variables.js"></script>
     <script>
         // Wait for PixiJS to load
         window.addEventListener('load', async () => {
@@ -114,8 +119,7 @@
 
 
             // Settings
-            const TILE_SIZE = 16;
-            const CHUNK_SIZE = 16;
+            // Settings (Loaded from variables.js)
 
 
 
@@ -161,9 +165,9 @@
             world.addChild(dirtLayer);
             world.addChild(grassLayer);
 
-            // Track hovered tile position
-            let hoveredTileX = null;
-            let hoveredTileY = null;
+            // Track hovered tile position (Global from variables.js)
+            // let hoveredTileX = null;
+            // let hoveredTileY = null;
 
             // Mouse tracking
 
@@ -173,10 +177,11 @@
 
             // Chunk-based world data
             // RENDER_DISTANCE now comes from config.renderDistance
-            const chunks = new Map(); // "cx,cy" -> chunk data
-            const chunkContainers = new Map(); // "cx,cy" -> { dirt: Container, grass: Container }
-            const dirtyChunks = new Set(); // Set of chunk keys to re-render this frame
-            let chunksRendered = 0;
+            // Chunk-based world data (Global from variables.js)
+            // const chunks = new Map(); 
+            // const chunkContainers = new Map();
+            // const dirtyChunks = new Set();
+            // let chunksRendered = 0;
 
             // renderChunk function reference - defined inside Promise.all().then() but accessed by setTile
             let renderChunk = null;
@@ -203,8 +208,8 @@
             // chunks map is global.
 
 
-            // Track pending requests to avoid duplicate fetches
-            const pendingChunks = new Set();
+            // Track pending requests (Global from variables.js)
+            // const pendingChunks = new Set();
 
             async function fetchChunk(cx, cy) {
                 const key = `${cx},${cy}`;
@@ -307,7 +312,7 @@
                 return Math.abs(hash) % 16; // Random dirt tile 0-15
             }
 
-            const globalTextureCache = new Map();
+            // Global Texture Cache (from variables.js)
 
             function getTileTexture(sourceTexture, idx) {
                 if (!globalTextureCache.has(sourceTexture)) {
@@ -356,15 +361,7 @@
             }
 
             // Load config from tweaker (config.json) and initialize game
-            let config = {
-                playerSpeed: 200,
-                defaultZoom: 3.0,
-                minZoom: 0.25,
-                maxZoom: 10,
-                chunkSize: 16,
-                renderDistance: 5,
-                lodThreshold: 0.8
-            };
+            // config defined in variables.js
 
             // Try to load config.json, then initialize game
             fetch('config.json')
@@ -381,22 +378,14 @@
                 });
 
             function initGame() {
-                // Camera
-                // Camera
-                const camera = { x: 0, y: 0, zoom: config.defaultZoom, freelook: false };
+                // Camera, Player, Mouse defined in variables.js
+                // Resetting critical values if needed
+                camera.zoom = config.defaultZoom;
+                player.speed = config.playerSpeed;
 
-                // Player (start in center of world, not at edge)
-                const player = { x: 128, y: 128, width: 16, height: 16, speed: config.playerSpeed };
-
-                // Mouse
-                const mouse = { x: 0, y: 0, left: false, right: false };
-                let selectSprite = null;
-
-
-
-                // Track hovered tile
-                let hoveredTileX = null;
-                let hoveredTileY = null;
+                // Track hovered tile (Global)
+                hoveredTileX = null;
+                hoveredTileY = null;
 
                 // Game loop - runs every frame
                 app.ticker.add((delta) => {
@@ -430,7 +419,7 @@
                         dragStartY = e.clientY;
                         cameraStartX = camera.x;
                         cameraStartY = camera.y;
-                        app.canvas.style.cursor = 'grabbing';
+                        // app.canvas.style.cursor = 'grabbing'; // Removed
                     }
                 }, true); // Use capture to run before other handlers
 
@@ -446,7 +435,7 @@
                 app.canvas.addEventListener('mouseup', () => {
                     if (isDragging) {
                         isDragging = false;
-                        app.canvas.style.cursor = isAltPressed ? 'grab' : "url('Assets/Image/cursor.png'), auto";
+                        // app.canvas.style.cursor = isAltPressed ? 'grab' : "url('Assets/Image/cursor.png'), auto"; // Removed
                     }
                 });
 
@@ -468,12 +457,13 @@
                 */
 
                 // Keyboard
-                const keys = {};
-                let showGrid = false;
-                let isAltPressed = false; // Track Alt key for freelook
+                // Keyboard (Global in variables.js)
+                // const keys = {};
+                // let showGrid = false;
+                // let isAltPressed = false; 
 
                 // Activity indicator - track currently pressed keys
-                let pressedKeys = new Set();
+                // let pressedKeys = new Set();
                 let fadeTimeout = null;
 
                 function updateActivity() {
@@ -499,14 +489,14 @@
 
                         if (isAltPressed) {
                             // Entering freelook
-                            app.canvas.style.cursor = 'grab';
+                            // app.canvas.style.cursor = 'grab'; // Removed
                             document.getElementById('info').textContent = 'FREELOOK MODE - Drag to pan, Scroll to zoom, Alt to exit';
                         } else {
                             // Exiting freelook - snap camera back to player and reset zoom
                             camera.x = player.x + player.width / 2;
                             camera.y = player.y + player.height / 2;
                             camera.zoom = config.defaultZoom; // Reset to default zoom (2.0)
-                            app.canvas.style.cursor = "url('Assets/Image/cursor.png'), auto";
+                            // app.canvas.style.cursor = "url('Assets/Image/cursor.png'), auto"; // Removed
                         }
                         e.preventDefault();
                     }
@@ -641,24 +631,14 @@
                     crosshairSprite.zIndex = 9999; 
                     world.addChild(crosshairSprite);
                     */
-                    app.stage.addChild(crosshairSprite);
+                    // Crosshair sprite removed in favor of HTML cursor
 
-                    // Setup Cursor: Restored Custom Sprite (Decoupled for performance)
-                    // Hiding system cursor
+
+                    // Setup Cursor: Using HTML Follower only (Performance)
+                    // System cursor hidden via CSS
                     app.canvas.style.cursor = 'none';
 
-                    let cursorSprite = null; // Declare here so game loop can see it
-                    PIXI.Assets.load('Assets/Image/cursor.png').then((cursorTex) => {
-                        cursorTex.source.scaleMode = 'nearest';
-                        cursorSprite = new PIXI.Sprite(cursorTex);
-                        cursorSprite.scale.set(2);
-                        cursorSprite.zIndex = 10000;
-                        cursorSprite.anchor.set(0.5); // Center the cursor on the mouse point
-                        app.stage.addChild(cursorSprite);
-                    }).catch(() => {
-                        console.warn("Cursor image failed to load, falling back to system cursor");
-                        app.canvas.style.cursor = 'auto'; // Fallback
-                    });
+                    let cursorSprite = null; // Removed Sprite Logic
 
                     // Mouse move handler - just track position
                     // Mouse move handler - Extremely Lightweight (Just updates data)
@@ -670,11 +650,8 @@
                     // Synced Cursor: Merged into PixiJS Ticker (The "Engine Heartbeat")
                     // This ensures the cursor updates exactly when the game renders, removing jitter.
                     app.ticker.add(() => {
-                        // 1. Update Cursor Sprite
-                        if (cursorSprite) {
-                            cursorSprite.x = mouse.x;
-                            cursorSprite.y = mouse.y;
-                        }
+                        // 1. Cursor handling moved to CSS/HTML
+
 
                         // 2. Update World Highlight
                         if (world.scale.x !== 0) {
@@ -796,7 +773,7 @@
 
                     // Incremental GC State
                     let gcIterator = null;
-                    const GC_RADIUS = config.renderDistance + 20;
+                    const GC_RADIUS = config.renderDistance + 5; // Reduced from +20 to clear cache faster
 
                     let lastTime = performance.now();
 
@@ -945,11 +922,8 @@
                             world.x = -camera.x * camera.zoom + app.screen.width / 2;
                             world.y = -camera.y * camera.zoom + app.screen.height / 2;
 
-                            // Crosshair Position Update (Screen Space)
-                            if (crosshairSprite) {
-                                crosshairSprite.x = app.screen.width / 2;
-                                crosshairSprite.y = app.screen.height / 2;
-                            }
+                            // Crosshair Position Update Removed
+
 
                             // Cursor is now updated in 'mousemove' listener for zero latency.
                             // Removed game loop update to prevent fighting/jitter.
@@ -1178,7 +1152,8 @@
                             const fps = Math.round(app.ticker.FPS);
                             const activeChunks = chunkContainers.size;
                             const cachedChunks = chunks.size;
-                            document.getElementById('info').textContent = `FPS: ${fps} | x: ${Math.floor(player.x)} y: ${Math.floor(player.y)} | Zoom: ${camera.zoom.toFixed(2)}x | Rendered: ${activeChunks} | Cached: ${cachedChunks}`;
+                            const loadingChunks = pendingChunks.size;
+                            document.getElementById('info').textContent = `FPS: ${fps} | x: ${Math.floor(player.x)} y: ${Math.floor(player.y)} | Zoom: ${camera.zoom.toFixed(2)}x | Rendered: ${activeChunks} | Cached: ${cachedChunks} | Loading: ${loadingChunks}`;
                         }
 
                         // Render overlays (grid, highlights, etc) - called after chunk rendering
