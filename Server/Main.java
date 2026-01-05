@@ -29,26 +29,62 @@ public class Main {
         }
     }
 
-    // Handles Client Requests: "GET x y"
+    // Handles Client Requests: HTTP GET
     private static void handleClient(Socket socket) {
         try (
                 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
-            String line;
-            while ((line = in.readLine()) != null) {
-                if (line.startsWith("GET")) {
-                    String[] parts = line.split(" ");
-                    int cx = Integer.parseInt(parts[1]);
-                    int cy = Integer.parseInt(parts[2]);
+                OutputStream out = socket.getOutputStream()) {
+            String line = in.readLine();
+            if (line == null)
+                return;
 
-                    // Serve Chunk
-                    String data = getOrGenerateChunk(cx, cy);
-                    out.println("CHUNK " + cx + " " + cy + " " + data);
+            // Log Request
+            // System.out.println("Req: " + line);
+
+            // Parse: GET /chunk?x=5&y=10 HTTP/1.1
+            if (line.startsWith("GET /chunk")) {
+                // Extract params
+                int xIndex = line.indexOf("x=");
+                int yIndex = line.indexOf("y=");
+                if (xIndex != -1 && yIndex != -1) {
+                    int endX = line.indexOf("&", xIndex);
+                    int endY = line.indexOf(" ", yIndex);
+                    if (endX != -1 && endY != -1) {
+                        String xStr = line.substring(xIndex + 2, endX);
+                        String yStr = line.substring(yIndex + 2, endY);
+
+                        try {
+                            int cx = Integer.parseInt(xStr);
+                            int cy = Integer.parseInt(yStr);
+
+                            String data = getOrGenerateChunk(cx, cy);
+                            sendHttpResponse(out, 200, data);
+                            return;
+                        } catch (Exception e) {
+                        }
+                    }
                 }
+                sendHttpResponse(out, 400, "Bad Request");
+            } else if (line.startsWith("GET /status")) {
+                sendHttpResponse(out, 200, "{\"chunks\": 4000000, \"status\": \"Online\"}");
+            } else {
+                sendHttpResponse(out, 404, "Not Found");
             }
+
         } catch (Exception e) {
-            // Client disconnect
+            e.printStackTrace();
         }
+    }
+
+    private static void sendHttpResponse(OutputStream out, int code, String body) throws IOException {
+        String status = code == 200 ? "OK" : "Error";
+        String response = "HTTP/1.1 " + code + " " + status + "\r\n" +
+                "Access-Control-Allow-Origin: *\r\n" +
+                "Content-Type: text/plain\r\n" +
+                "Content-Length: " + body.length() + "\r\n" +
+                "\r\n" +
+                body;
+        out.write(response.getBytes());
     }
 
     private static String getOrGenerateChunk(int cx, int cy) {

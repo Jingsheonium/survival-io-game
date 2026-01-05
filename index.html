@@ -53,12 +53,31 @@
         #activity.flash {
             opacity: 1;
         }
+
+        /* Custom HTML Cursor */
+        #follower-element {
+            width: 50px;
+            height: 50px;
+            background-color: red;
+            border-radius: 50%;
+            position: fixed;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            transition: transform 0.1s linear;
+            z-index: 10000;
+            /* Above Everything */
+            opacity: 0.8;
+            /* Slight transparency */
+            mix-blend-mode: exclusion;
+            /* Cool effect over game */
+        }
     </style>
 </head>
 
 <body>
     <div id="info"></div>
     <div id="activity"></div>
+    <div id="follower-element"></div>
 
     <div id="loading"
         style="position:fixed;top:0;left:0;width:100%;height:100%;background:#111;z-index:9999;display:flex;flex-direction:column;justify-content:center;align-items:center;color:white;font-family:monospace;transition:opacity 0.5s;">
@@ -179,48 +198,69 @@
                     (hash(c) * (1 - u) + hash(d) * u) * v;
             }
 
-            // Get or create chunk
-            function getChunk(cx, cy) {
+            // Chunk Management (Client Cache)
+            // Data is fetched from Server, stored here
+            // chunks map is global.
+
+
+            // Track pending requests to avoid duplicate fetches
+            const pendingChunks = new Set();
+
+            async function fetchChunk(cx, cy) {
                 const key = `${cx},${cy}`;
-                if (!chunks.has(key)) {
-                    // Generate chunk with Perlin noise
-                    const chunk = [];
-                    for (let ty = 0; ty < CHUNK_SIZE; ty++) {
-                        chunk[ty] = [];
-                        for (let tx = 0; tx < CHUNK_SIZE; tx++) {
-                            const worldX = cx * CHUNK_SIZE + tx;
-                            const worldY = cy * CHUNK_SIZE + ty;
+                if (chunks.has(key) || pendingChunks.has(key)) return;
 
-                            // Multi-octave Perlin noise for more natural terrain
-                            const scale1 = 0.08;  // Large features (smaller = bigger features)
-                            const scale2 = 0.2;   // Medium features
-                            const noise1 = noise2D(worldX * scale1, worldY * scale1);
-                            const noise2 = noise2D(worldX * scale2, worldY * scale2);
-                            const combinedNoise = noise1 * 0.7 + noise2 * 0.3;
+                pendingChunks.add(key);
+                try {
+                    const res = await fetch(`http://localhost:25565/chunk?x=${cx}&y=${cy}`);
+                    if (res.ok) {
+                        const dataStr = await res.text();
 
-                            chunk[ty][tx] = combinedNoise > 0.15 ? 1 : 0; // 1=grass, 0=dirt
-                        }
-                    }
-                    chunks.set(key, chunk);
+                        // Server returns "010101..." string (length 256)
+                        // We need to convert this to [y][x] array format used by Client
+                        // Since Client Logic expects chunks.get(key)[y][x]
 
-                    // FIX: Dirty neighbors to ensure smooth edges (Dual Grid)
-                    // CRITICAL FIX: Only dirty neighbors that ALERTADLY EXIST.
-                    // This prevents infinite loop of Generation -> Render -> Generate Neighbor -> Render -> ...
-                    if (typeof dirtyChunks !== 'undefined') {
-                        const neighbors = [
-                            `${cx - 1},${cy}`,
-                            `${cx + 1},${cy}`,
-                            `${cx},${cy - 1}`,
-                            `${cx},${cy + 1}`
-                        ];
-                        for (const nKey of neighbors) {
-                            if (chunks.has(nKey)) {
-                                dirtyChunks.add(nKey);
+                        const chunk = [];
+                        let idx = 0;
+                        for (let ty = 0; ty < CHUNK_SIZE; ty++) {
+                            chunk[ty] = [];
+                            for (let tx = 0; tx < CHUNK_SIZE; tx++) {
+                                const char = dataStr[idx++] || '0';
+                                chunk[ty][tx] = parseInt(char);
                             }
                         }
+                        chunks.set(key, chunk);
+
+                        // Trigger Render for this chunk
+                        if (typeof dirtyChunks !== 'undefined') {
+                            dirtyChunks.add(key);
+                            // Also update neighbors
+                            dirtyChunks.add(`${cx - 1},${cy}`);
+                            dirtyChunks.add(`${cx + 1},${cy}`);
+                            dirtyChunks.add(`${cx},${cy - 1}`);
+                            dirtyChunks.add(`${cx},${cy + 1}`);
+                        }
                     }
+                } catch (e) {
+                    // console.error("Chunk Fetch Failed", cx, cy, e);
+                } finally {
+                    pendingChunks.delete(key);
                 }
-                return chunks.get(key);
+            }
+
+            function getChunk(cx, cy) {
+                const key = `${cx},${cy}`;
+                if (chunks.has(key)) {
+                    return chunks.get(key);
+                }
+                // Request from Server (Via Worker)
+                fetchChunkViaWorker(cx, cy);
+
+                // Return temporary empty chunk to avoid rendering crashes
+                // Creating an empty 16x16 array
+                const empty = [];
+                for (let i = 0; i < CHUNK_SIZE; i++) empty[i] = new Array(CHUNK_SIZE).fill(0);
+                return empty;
             }
 
             function getTile(x, y) {
@@ -594,10 +634,13 @@
                     selectSprite.zIndex = 1000; // Ensure it's always on top
                     world.addChild(selectSprite);
 
-                    // Setup Crosshair Sprite (One-time creation)
+                    // Setup Crosshair Sprite (REMOVED: Using HTML Follower)
+                    /*
                     const crosshairSprite = new PIXI.Sprite(crosshairTex);
                     crosshairSprite.anchor.set(0.5);
-                    crosshairSprite.zIndex = 9999; // Super high z-index (Above world)
+                    crosshairSprite.zIndex = 9999; 
+                    world.addChild(crosshairSprite);
+                    */
                     app.stage.addChild(crosshairSprite);
 
                     // Setup Cursor: Restored Custom Sprite (Decoupled for performance)
@@ -707,53 +750,49 @@
                     const avgGrassColor = getAverageColor(grassTex);
 
 
-                    // ASYNC Pre-generation with Loading Bar
-                    const pregenRadius = config.renderDistance + 8; // Load A LOT (User Request)
-                    const totalChunks = (pregenRadius * 2 + 1) * (pregenRadius * 2 + 1);
-                    let chunksGenerated = 0;
-                    let genCX = -pregenRadius;
-                    let genCY = -pregenRadius;
+                    // ASYNC Pre-generation (Networked)
+                    // Connect to Java Server (localhost:25565)
+                    const SERVER_URL = 'http://localhost:25565';
 
                     // Hide Canvas initially
                     app.canvas.style.opacity = '0';
                     app.canvas.style.transition = 'opacity 1s';
 
-                    function processPregen() {
-                        const startTime = performance.now();
-                        // Generate chunks for 16ms (1 frame)
-                        while (performance.now() - startTime < 16 && genCY <= pregenRadius) {
-                            getChunk(genCX, genCY);
-                            chunksGenerated++;
+                    async function waitForServerAndLoad() {
+                        const loadingBar = document.getElementById('loading-bar');
+                        const loadingText = document.getElementById('loading-text');
+                        const loadingTitle = document.querySelector('#loading h1');
 
-                            // Move to next
-                            genCX++;
-                            if (genCX > pregenRadius) {
-                                genCX = -pregenRadius;
-                                genCY++;
+                        let connected = false;
+                        loadingTitle.innerText = "Connecting to Infinite Server...";
+
+                        // Poll for Server Status
+                        while (!connected) {
+                            try {
+                                const res = await fetch(`${SERVER_URL}/status`);
+                                const status = await res.json();
+                                connected = true;
+                                loadingTitle.innerText = "Connected to World Server!";
+                                loadingText.innerText = `Server Online: ${status.chunks.toLocaleString()} Chunks Available`;
+                                loadingBar.style.width = '100%';
+                            } catch (e) {
+                                loadingText.innerText = "Waiting for Java Server... (Run 'java Main')";
+                                await new Promise(r => setTimeout(r, 1000));
                             }
                         }
 
-                        // Update UI
-                        const progress = Math.min(100, Math.floor((chunksGenerated / totalChunks) * 100));
-                        document.getElementById('loading-bar').style.width = progress + '%';
-                        document.getElementById('loading-text').innerText = `${progress}% (${chunksGenerated} Chunks)`;
-
-                        if (genCY <= pregenRadius) {
-                            requestAnimationFrame(processPregen);
-                        } else {
-                            // Done!
-                            setTimeout(() => {
-                                const loading = document.getElementById('loading');
-                                loading.style.opacity = '0';
-                                app.canvas.style.opacity = '1';
-                                setTimeout(() => loading.remove(), 500);
-                                startGameLoop(); // Start the game only after loading
-                            }, 200);
-                        }
+                        // Delay enter to show "Connected" state
+                        setTimeout(() => {
+                            const loading = document.getElementById('loading');
+                            loading.style.opacity = '0';
+                            app.canvas.style.opacity = '1';
+                            setTimeout(() => loading.remove(), 500);
+                            startGameLoop();
+                        }, 2000);
                     }
 
-                    // Start Loading
-                    processPregen();
+                    // Start Network Loading
+                    waitForServerAndLoad();
 
                     // Incremental GC State
                     let gcIterator = null;
@@ -961,6 +1000,11 @@
                         // Chunk Rendering Function - assign to outer scope variable
                         renderChunk = function (cx, cy) {
                             const key = `${cx},${cy}`;
+
+                            // Check if chunk data exists. If not, don't render anything yet
+                            // (fetchChunk was triggered by getChunk, just wait for next frame)
+                            if (!chunks.has(key)) return;
+
                             const chunk = getChunk(cx, cy);
                             const chunkDirt = new PIXI.Container();
                             const chunkGrass = new PIXI.Container();
@@ -1113,7 +1157,7 @@
 
                             // Render new chunks (only if not already rendered)
                             // Time Slicing Scale: More chunks if zoomed out
-                            const MAX_CHUNKS_PER_FRAME = Math.max(20, Math.floor(100 / Math.max(0.1, camera.zoom)));
+                            const MAX_CHUNKS_PER_FRAME = config.maxChunksPerFrame || 10;
                             let chunksCreated = 0;
 
                             // Loop through chunks (standard scanline order: top-to-bottom)
@@ -1231,7 +1275,49 @@
                     } // End renderOverlays
                 });
             } // End initGame function
+
+            // HTML Cursor Logic (Simple Follower)
+            const follower = document.getElementById("follower-element");
+            window.addEventListener('mousemove', (event) => {
+                const clientX = event.clientX;
+                const clientY = event.clientY;
+                follower.style.left = `${clientX}px`;
+                follower.style.top = `${clientY}px`;
+            });
+
         }); // End window.addEventListener
+        // WORLD WORKER INTEGRATION (Append Strategy)
+        const worldWorker = new Worker('world-worker.js');
+        worldWorker.onmessage = function (e) {
+            const { type, cx, cy, data } = e.data;
+            const key = `${cx},${cy}`;
+            if (type === 'chunkData') {
+                const chunk2D = [];
+                for (let i = 0; i < CHUNK_SIZE; i++) {
+                    const start = i * CHUNK_SIZE;
+                    chunk2D[i] = Array.from(data.slice(start, start + CHUNK_SIZE));
+                }
+                chunks.set(key, chunk2D);
+                // Mark Dirty
+                if (typeof dirtyChunks !== 'undefined') {
+                    dirtyChunks.add(key);
+                    // Neighbors
+                    dirtyChunks.add(`${cx - 1},${cy}`);
+                    dirtyChunks.add(`${cx + 1},${cy}`);
+                    dirtyChunks.add(`${cx},${cy - 1}`);
+                    dirtyChunks.add(`${cx},${cy + 1}`);
+                }
+            }
+        };
+
+        function fetchChunkViaWorker(cx, cy) {
+            // Ensure unique request
+            const key = `${cx},${cy}`;
+            if (pendingChunks.has(key) || chunks.has(key)) return;
+            pendingChunks.add(key);
+            worldWorker.postMessage({ type: 'fetchChunk', cx, cy });
+        }
+
     </script>
 </body>
 
