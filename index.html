@@ -382,6 +382,17 @@
 
             function initGame() {
                 // Camera, Player, Mouse defined in variables.js
+
+                // RANDOM SPAWN (User Request: Spawn randomly in the 2^20 chunk world)
+                const worldRadiusInBlocks = 512 * 16;
+                // Random range: [-512*16, 512*16]
+                player.x = (Math.random() * worldRadiusInBlocks * 2) - worldRadiusInBlocks;
+                player.y = (Math.random() * worldRadiusInBlocks * 2) - worldRadiusInBlocks;
+
+                // Snap camera to player immediately
+                camera.x = player.x;
+                camera.y = player.y;
+
                 // Resetting critical values if needed
                 camera.zoom = config.defaultZoom;
                 player.speed = config.playerSpeed;
@@ -765,6 +776,35 @@
 
                         // Start Game Loop IMMEDIATELY to begin fetching chunks (Background)
                         startGameLoop();
+
+                        // FORCE REQUEST CHUNKS (Throttled Batch Loading)
+                        // Prevents "Network Error" / "Stuck" by causing too many requests at once.
+                        const initialRenderDist = config.renderDistance;
+                        const pCx = Math.floor(player.x / (16 * 16));
+                        const pCy = Math.floor(player.y / (16 * 16));
+
+                        const chunksToLoad = [];
+                        for (let y = -initialRenderDist; y <= initialRenderDist; y++) {
+                            for (let x = -initialRenderDist; x <= initialRenderDist; x++) {
+                                chunksToLoad.push({ x: pCx + x, y: pCy + y });
+                            }
+                        }
+
+                        // Batch Process: 50 chunks every 50ms (Total ~1s for 1000 chunks)
+                        let currentChunkIdx = 0;
+                        const batchSize = 50;
+                        const loadInterval = setInterval(() => {
+                            for (let i = 0; i < batchSize; i++) {
+                                if (currentChunkIdx >= chunksToLoad.length) {
+                                    clearInterval(loadInterval);
+                                    return;
+                                }
+                                const c = chunksToLoad[currentChunkIdx++];
+                                if (!chunks.has(`${c.x},${c.y}`)) {
+                                    blockWorker.postMessage({ type: 'loadChunk', x: c.x, y: c.y });
+                                }
+                            }
+                        }, 50);
 
                         // Wait for Chunks to actually load before removing screen (Smoother Start)
                         const checkLoaded = setInterval(() => {

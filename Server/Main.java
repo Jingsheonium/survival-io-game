@@ -11,10 +11,10 @@ public class Main {
     public static void main(String[] args) throws IOException {
         System.out.println("Tyls.io");
 
-        // Preload chunks to reduce runtime lag (User Request)
-        System.out.println("Preloading World (Radius 500)...");
-        preloadChunks(500); // Generates ~1,000,000 chunks
-        System.out.println("Ready! (Cached " + chunkCache.size() + " chunks)");
+        // Preload chunks to reduce runtime lag (User Request: 2^20 Chunks)
+        System.out.println("Loading World...");
+        preloadChunks(512); // Generates 1,048,576 chunks (1024x1024)
+        System.out.println("Ready! (Loaded " + chunkCache.size() + " chunks)");
 
         try (ServerSocket server = new ServerSocket(25565)) {
             while (true) {
@@ -78,6 +78,7 @@ public class Main {
         String status = code == 200 ? "OK" : "Error";
         String response = "HTTP/1.1 " + code + " " + status + "\r\n" +
                 "Access-Control-Allow-Origin: *\r\n" +
+                "Access-Control-Allow-Methods: GET, OPTIONS\r\n" + // Allow Methods
                 "Access-Control-Allow-Private-Network: true\r\n" +
                 "Access-Control-Allow-Headers: *\r\n" +
                 "Access-Control-Max-Age: 86400\r\n" + // Cache Preflight for 24h
@@ -99,8 +100,10 @@ public class Main {
     }
 
     private static void preloadChunks(int radius) {
-        for (int y = -radius; y <= radius; y++) {
-            for (int x = -radius; x <= radius; x++) {
+        // EXACTLY 2^20 chunks = 1024 * 1024
+        // Loop from -512 to 511 (Total 1024)
+        for (int y = -radius; y < radius; y++) {
+            for (int x = -radius; x < radius; x++) {
                 String data = generateChunkData(x, y);
                 chunkCache.put(x + "," + y, data);
             }
