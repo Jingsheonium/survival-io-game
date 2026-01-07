@@ -59,6 +59,9 @@ public class Main {
                     }
                 }
                 sendHttpResponse(out, 400, "Bad Request");
+            } else if (line.startsWith("OPTIONS")) {
+                // Preflight for Private Network Access
+                sendHttpResponse(out, 200, "");
             } else if (line.startsWith("GET /status")) {
                 sendHttpResponse(out, 200, "{\"chunks\": \"Infinite\", \"status\": \"Online\"}");
             } else {
@@ -74,6 +77,8 @@ public class Main {
         String status = code == 200 ? "OK" : "Error";
         String response = "HTTP/1.1 " + code + " " + status + "\r\n" +
                 "Access-Control-Allow-Origin: *\r\n" +
+                "Access-Control-Allow-Private-Network: true\r\n" +
+                "Access-Control-Allow-Headers: *\r\n" +
                 "Content-Type: text/plain\r\n" +
                 "Content-Length: " + body.length() + "\r\n" +
                 "\r\n" +
