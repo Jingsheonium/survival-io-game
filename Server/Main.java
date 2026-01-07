@@ -10,7 +10,7 @@ public class Main {
     private static final String SAVE_DIR = "world_data";
 
     public static void main(String[] args) throws IOException {
-        System.out.println("Starting Tyler.io Java Server...");
+        System.out.println("Tyls.io");
 
         // Ensure save directory
         new File(SAVE_DIR).mkdirs();
@@ -19,7 +19,7 @@ public class Main {
         // REMOVED: Pre-generation loop was blocking startup (4 million chunks take too
         // long).
         // Chunks are now generated LAZILY (on demand) which is instant.
-        System.out.println("Server Ready on Port 25565.");
+        System.out.println("Ready");
 
         ServerSocket server = new ServerSocket(25565);
         while (true) {
