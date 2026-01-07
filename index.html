@@ -769,7 +769,7 @@
                         // Wait for Chunks to actually load before removing screen (Smoother Start)
                         const checkLoaded = setInterval(() => {
                             // Counter + Wait Logic
-                            const renderDist = Math.min(config.renderDistance, 8);
+                            const renderDist = config.renderDistance;
                             const expectedChunks = Math.pow((renderDist * 2 + 1), 2);
 
                             // STRICT COUNT: Only count chunks that are actually within the Render Distance

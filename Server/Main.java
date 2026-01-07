@@ -5,15 +5,16 @@ import java.net.*;
 
 public class Main {
     private static final int CHUNK_SIZE = 16;
+    // Cache for preloaded chunks
+    private static final java.util.Map<String, String> chunkCache = new java.util.HashMap<>();
 
     public static void main(String[] args) throws IOException {
         System.out.println("Tyls.io");
 
-        // SIMULATE DATA LOADING (User Request: "Take a while, render trillions")
-        // REMOVED: Pre-generation loop was blocking startup (4 million chunks take too
-        // long).
-        // Chunks are now generated LAZILY (on demand) which is instant.
-        System.out.println("Ready");
+        // Preload chunks to reduce runtime lag (User Request)
+        System.out.println("Preloading World (Radius 500)...");
+        preloadChunks(500); // Generates ~1,000,000 chunks
+        System.out.println("Ready! (Cached " + chunkCache.size() + " chunks)");
 
         try (ServerSocket server = new ServerSocket(25565)) {
             while (true) {
@@ -79,6 +80,8 @@ public class Main {
                 "Access-Control-Allow-Origin: *\r\n" +
                 "Access-Control-Allow-Private-Network: true\r\n" +
                 "Access-Control-Allow-Headers: *\r\n" +
+                "Access-Control-Max-Age: 86400\r\n" + // Cache Preflight for 24h
+                "Connection: close\r\n" + // Force Socket Close (Fixes Hangs)
                 "Content-Type: text/plain\r\n" +
                 "Content-Length: " + body.length() + "\r\n" +
                 "\r\n" +
@@ -87,9 +90,21 @@ public class Main {
     }
 
     private static String getOrGenerateChunk(int cx, int cy) {
-        // "Virtual" World: Generate on fly, no saving.
-        // Solves the "530 commits" and "corrupted files" issue completely.
+        String key = cx + "," + cy;
+        if (chunkCache.containsKey(key)) {
+            return chunkCache.get(key);
+        }
+        // Fallback for outside preloaded area
         return generateChunkData(cx, cy);
+    }
+
+    private static void preloadChunks(int radius) {
+        for (int y = -radius; y <= radius; y++) {
+            for (int x = -radius; x <= radius; x++) {
+                String data = generateChunkData(x, y);
+                chunkCache.put(x + "," + y, data);
+            }
+        }
     }
 
     // Generate Chunk Data (0s and 1s) using simple Noise
