@@ -87,8 +87,7 @@
         style="position:fixed;top:0;left:0;width:100%;height:100%;background:#111;z-index:9999;display:flex;flex-direction:column;justify-content:center;align-items:center;color:white;font-family:monospace;transition:opacity 0.5s;">
         <h1 style="margin-bottom:20px;font-size:32px;">Generating World...</h1>
         <div style="width:300px;height:20px;border:2px solid white;padding:2px;">
-            <div id="loading-bar"
-                style="width:0%;height:100%;background:#ff4444;transition:width 0.2s, background-color 0.5s;"></div>
+            <div id="loading-bar" style="width:0%;height:100%;background:white;transition:width 0.2s;"></div>
         </div>
         <p id="loading-text" style="margin-top:10px;">0%</p>
     </div>
@@ -772,53 +771,34 @@
                             // Counter + Wait Logic
                             const renderDist = Math.min(config.renderDistance, 8);
                             const expectedChunks = Math.pow((renderDist * 2 + 1), 2);
-                            const loadedCount = chunks.size;
 
-                            // Sync Bar with Chunk Progress (Layered Stacking Effect)
+                            // STRICT COUNT: Only count chunks that are actually within the Render Distance
+                            // This prevents "chunks.size" (which includes cache/garbage) from exceeding expectedChunks
+                            let loadedCount = 0;
+                            // Assume player is at 0,0 locally during load for simplicity
+                            // Check range [-renderDist, renderDist]
+                            for (let y = -renderDist; y <= renderDist; y++) {
+                                for (let x = -renderDist; x <= renderDist; x++) {
+                                    if (chunks.has(`${x},${y}`)) loadedCount++;
+                                }
+                            }
+
+                            // Sync Bar with Chunk Progress (Simple White Bar)
                             const totalProgress = Math.min((loadedCount / expectedChunks) * 100, 100);
                             const loadingBar = document.getElementById('loading-bar');
                             const loadingContainer = loadingBar ? loadingBar.parentElement : null;
 
                             if (loadingBar && loadingContainer) {
-                                // 3 Stages: Red -> Orange -> Green
-                                // Stage 1: 0 - 33% (White BG, Red Bar)
-                                // Stage 2: 33 - 66% (Red BG, Orange Bar)
-                                // Stage 3: 66 - 100% (Orange BG, Green Bar)
-
-                                let stageProgress = 0;
-                                let barColor = '#ff4444';
-                                let bgColor = '#ffffff';
-
-                                if (totalProgress < 33.33) {
-                                    // Stage 1
-                                    stageProgress = (totalProgress / 33.33) * 100;
-                                    barColor = '#ff4444'; // Red
-                                    bgColor = '#ffffff';  // White
-                                } else if (totalProgress < 66.66) {
-                                    // Stage 2
-                                    stageProgress = ((totalProgress - 33.33) / 33.33) * 100;
-                                    barColor = '#ffbb33'; // Orange
-                                    bgColor = '#ff4444';  // Red (Previous)
-                                } else {
-                                    // Stage 3
-                                    stageProgress = ((totalProgress - 66.66) / 33.34) * 100;
-                                    barColor = '#00C851'; // Green
-                                    bgColor = '#ffbb33';  // Orange (Previous)
-                                }
-
-                                loadingBar.style.width = `${Math.min(stageProgress, 100)}%`;
-                                loadingBar.style.backgroundColor = barColor;
-                                loadingContainer.style.backgroundColor = bgColor;
-                                // Remove transition for snappier stage swaps? Keep smooth for progress.
+                                loadingBar.style.width = `${totalProgress}%`;
+                                loadingBar.style.backgroundColor = '#ffffff'; // Always White
+                                loadingContainer.style.backgroundColor = '#000000'; // Black Background
                                 loadingBar.style.transition = 'width 0.2s';
                             }
 
                             loadingTitle.innerText = "Rendering Chunks...";
-                            // Cap display at 100% to avoid confusion
-                            const displayCount = Math.min(loadedCount, expectedChunks);
-                            loadingText.innerText = `(${displayCount} / ${expectedChunks})`;
+                            loadingText.innerText = `(${loadedCount} / ${expectedChunks})`;
 
-                            // Start immediately if we have enough chunks (Ignore pending request stragglers)
+                            // Start immediately if we have enough chunks
                             if (loadedCount >= expectedChunks) {
                                 clearInterval(checkLoaded);
 
