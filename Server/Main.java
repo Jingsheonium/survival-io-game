@@ -6,13 +6,8 @@ import java.net.*;
 public class Main {
     private static final int CHUNK_SIZE = 16;
 
-    private static final String SAVE_DIR = "world_data";
-
     public static void main(String[] args) throws IOException {
         System.out.println("Tyls.io");
-
-        // Ensure save directory
-        new File(SAVE_DIR).mkdirs();
 
         // SIMULATE DATA LOADING (User Request: "Take a while, render trillions")
         // REMOVED: Pre-generation loop was blocking startup (4 million chunks take too
