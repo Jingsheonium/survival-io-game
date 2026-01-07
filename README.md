@@ -30,3 +30,10 @@ The goal is to create a seamless IO game accessible via:
 -   **Client**: Users trigger a "popup" or navigate to the URL to connect to this remote server.
 -   **Activation**: Users won't run `.bat` files; the server runs 24/7 in the cloud. They just "Activate" by visiting the link.
 
+
+### Feature Roadmap: Graphics & Immersion
+**Motion Blur (Per-Pixel Smearing)**
+To hide low FPS and enhance speed (like Spider-Man), we plan to implement **Per-Pixel Motion Blur** using velocity buffers.
+-   **Why**: Hides stuttering, immersive speed sense.
+-   **Technique**: Per-object buffering (better than full-screen "muddy" blur).
+-   **Preference**: User-controllable (On/Off).

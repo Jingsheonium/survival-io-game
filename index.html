@@ -753,7 +753,7 @@
                                 const status = await res.json();
                                 connected = true;
                                 connected = true;
-                                loadingTitle.innerText = "Connected";
+                                loadingTitle.innerText = "Loading World...";
                                 loadingText.innerText = "";
                                 loadingBar.style.width = '100%';
                             } catch (e) {
@@ -768,8 +768,15 @@
 
                         // Wait for Chunks to actually load before removing screen (Smoother Start)
                         const checkLoaded = setInterval(() => {
-                            // "Ready" when we have chunks and no active requests
-                            if (chunks.size > 0 && pendingChunks.size === 0) {
+                            // Counter + Wait Logic
+                            const renderDist = Math.min(config.renderDistance, 8);
+                            const expectedChunks = Math.pow((renderDist * 2 + 1), 2);
+                            const loadedCount = chunks.size;
+
+                            loadingTitle.innerText = "Rendering Chunks...";
+                            loadingText.innerText = `(${loadedCount} / ${expectedChunks})`;
+
+                            if (loadedCount >= expectedChunks * 0.9 && pendingChunks.size === 0) {
                                 clearInterval(checkLoaded);
 
                                 const loading = document.getElementById('loading');

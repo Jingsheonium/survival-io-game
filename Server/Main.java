@@ -87,14 +87,9 @@ public class Main {
     }
 
     private static String getOrGenerateChunk(int cx, int cy) {
-        File file = new File(SAVE_DIR, cx + "_" + cy + ".dat");
-        if (file.exists()) {
-            return readChunk(file);
-        } else {
-            String data = generateChunkData(cx, cy);
-            writeChunk(file, data);
-            return data;
-        }
+        // "Virtual" World: Generate on fly, no saving.
+        // Solves the "530 commits" and "corrupted files" issue completely.
+        return generateChunkData(cx, cy);
     }
 
     // Generate Chunk Data (0s and 1s) using simple Noise
@@ -115,22 +110,4 @@ public class Main {
         return sb.toString();
     }
 
-    private static void writeChunk(File file, String data) {
-        // Ensure directory exists (Robustness Fix)
-        file.getParentFile().mkdirs();
-
-        try (FileWriter fw = new FileWriter(file)) {
-            fw.write(data);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private static String readChunk(File file) {
-        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-            return br.readLine();
-        } catch (IOException e) {
-            return "";
-        }
-    }
 }
