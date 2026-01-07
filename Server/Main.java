@@ -2,11 +2,10 @@ package Server;
 
 import java.io.*;
 import java.net.*;
-import java.util.*;
 
 public class Main {
     private static final int CHUNK_SIZE = 16;
-    private static final int WORLD_SEED = 12345;
+
     private static final String SAVE_DIR = "world_data";
 
     public static void main(String[] args) throws IOException {
@@ -21,10 +20,11 @@ public class Main {
         // Chunks are now generated LAZILY (on demand) which is instant.
         System.out.println("Ready");
 
-        ServerSocket server = new ServerSocket(25565);
-        while (true) {
-            Socket client = server.accept();
-            new Thread(() -> handleClient(client)).start();
+        try (ServerSocket server = new ServerSocket(25565)) {
+            while (true) {
+                Socket client = server.accept();
+                new Thread(() -> handleClient(client)).start();
+            }
         }
     }
 
@@ -115,25 +115,10 @@ public class Main {
         return sb.toString();
     }
 
-    // "Pre-load" simulation
-    private static void generateWorldRegion(int minX, int minY, int maxX, int maxY) {
-        int total = (maxX - minX + 1) * (maxY - minY + 1);
-        int current = 0;
-        long startTime = System.currentTimeMillis();
-
-        for (int y = minY; y <= maxY; y++) {
-            for (int x = minX; x <= maxX; x++) {
-                getOrGenerateChunk(x, y);
-                current++;
-                if (current % 100 == 0) {
-                    System.out.printf("\rGenerating Chunks: %d / %d", current, total);
-                }
-            }
-        }
-        System.out.println();
-    }
-
     private static void writeChunk(File file, String data) {
+        // Ensure directory exists (Robustness Fix)
+        file.getParentFile().mkdirs();
+
         try (FileWriter fw = new FileWriter(file)) {
             fw.write(data);
         } catch (IOException e) {

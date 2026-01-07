@@ -753,24 +753,31 @@
                                 const status = await res.json();
                                 connected = true;
                                 connected = true;
-                                loadingTitle.innerText = "Rendering Chunks"; // Simplified Success Message
-                                loadingText.innerText = `Connected. ${status.chunks} Chunks Ready.`;
+                                loadingTitle.innerText = "Connected";
+                                loadingText.innerText = "";
                                 loadingBar.style.width = '100%';
                             } catch (e) {
-                                loadingTitle.innerText = "Connecting..."; // Simplified Waiting Message
-                                loadingText.innerText = "Waiting for Server...";
+                                loadingTitle.innerText = "Connecting...";
+                                loadingText.innerText = "";
                                 await new Promise(r => setTimeout(r, 1000));
                             }
                         }
 
-                        // Delay enter to show "Connected" state
-                        setTimeout(() => {
-                            const loading = document.getElementById('loading');
-                            loading.style.opacity = '0';
-                            app.canvas.style.opacity = '1';
-                            setTimeout(() => loading.remove(), 500);
-                            startGameLoop();
-                        }, 2000);
+                        // Start Game Loop IMMEDIATELY to begin fetching chunks (Background)
+                        startGameLoop();
+
+                        // Wait for Chunks to actually load before removing screen (Smoother Start)
+                        const checkLoaded = setInterval(() => {
+                            // "Ready" when we have chunks and no active requests
+                            if (chunks.size > 0 && pendingChunks.size === 0) {
+                                clearInterval(checkLoaded);
+
+                                const loading = document.getElementById('loading');
+                                loading.style.opacity = '0';
+                                app.canvas.style.opacity = '1';
+                                setTimeout(() => loading.remove(), 500);
+                            }
+                        }, 200);
                     }
 
                     // Start Network Loading
