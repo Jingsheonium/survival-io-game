@@ -20,3 +20,13 @@ A 2D survival game built with PixiJS.
 - **Engine**: PixiJS v8
 - **Language**: Vanilla JavaScript / HTML5
 
+## Future Vision: tyls.io
+The goal is to create a seamless IO game accessible via:
+1.  **Browser (tyls.io)**: Instant play, no download. Ideal for school/quick play.
+2.  **Desktop (Window)**: Downloadable version (C# Wrapper / Electron) for better performance and dedicated features.
+
+### Architecture Note for Future
+-   **Server**: The Java backend will run on a **Cloud Server**.
+-   **Client**: Users trigger a "popup" or navigate to the URL to connect to this remote server.
+-   **Activation**: Users won't run `.bat` files; the server runs 24/7 in the cloud. They just "Activate" by visiting the link.
+

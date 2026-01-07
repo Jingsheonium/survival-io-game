@@ -16,12 +16,10 @@ public class Main {
         new File(SAVE_DIR).mkdirs();
 
         // SIMULATE DATA LOADING (User Request: "Take a while, render trillions")
-        // We will pre-generate a "Server Region"
-        System.out.println("Pre-loading World Data (This might take a moment)...");
-        // Radius 1000 = 2000x2000 chunks = 4 Million Chunks
-        // This simulates a "Massive World" load.
-        generateWorldRegion(-1000, -1000, 1000, 1000);
-        System.out.println("World Generation Complete. Server Ready on Port 25565.");
+        // REMOVED: Pre-generation loop was blocking startup (4 million chunks take too
+        // long).
+        // Chunks are now generated LAZILY (on demand) which is instant.
+        System.out.println("Server Ready on Port 25565.");
 
         ServerSocket server = new ServerSocket(25565);
         while (true) {
@@ -67,7 +65,7 @@ public class Main {
                 }
                 sendHttpResponse(out, 400, "Bad Request");
             } else if (line.startsWith("GET /status")) {
-                sendHttpResponse(out, 200, "{\"chunks\": 4000000, \"status\": \"Online\"}");
+                sendHttpResponse(out, 200, "{\"chunks\": \"Infinite\", \"status\": \"Online\"}");
             } else {
                 sendHttpResponse(out, 404, "Not Found");
             }
